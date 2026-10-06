@@ -1,0 +1,6 @@
+{
+  "appId": "app.pip.companion",
+  "appName": "Pip",
+  "webDir": "dist",
+  "backgroundColor": "#FBF6EE"
+}
