@@ -2,7 +2,7 @@
 // Settings: sound, music, haptics, renaming, and a gentle way to start again.
 import { nextTick, ref, watch } from 'vue'
 import { usePipStore } from '@/stores/pip'
-import { remindersSupported, requestReminderPermission } from '@/services/notifications'
+import { remindersMode, enableReminders, disableReminders } from '@/services/notifications'
 import Icon from './Icon.vue'
 
 const props = defineProps({
@@ -36,8 +36,16 @@ async function focusName() {
   input.value?.select()
 }
 
-const supported = remindersSupported()
+const mode = remindersMode()
 const permissionNote = ref('')
+const working = ref(false)
+
+const REASONS = {
+  denied: 'Notifications are turned off for Pip. You can allow them in your phone’s settings.',
+  install: 'On iPhone, add Pip to your Home Screen first (Share, then Add to Home Screen), and open it from there.',
+  unsupported: 'This browser can’t show reminders. Try Chrome on Android, or Pip on your iPhone Home Screen.',
+  server: 'Couldn’t reach Pip’s reminder service just now. Please try again in a moment.',
+}
 const TIMES = [
   { value: '09:00', label: 'Morning' },
   { value: '13:00', label: 'Midday' },
@@ -46,9 +54,18 @@ const TIMES = [
 ]
 
 async function toggleReminders() {
-  if (pip.remindersOn) return pip.setReminders(false)
-  if (supported && !(await requestReminderPermission())) {
-    permissionNote.value = 'Notifications are turned off for Pip in your phone settings.'
+  if (working.value) return
+  permissionNote.value = ''
+  if (pip.remindersOn) {
+    pip.setReminders(false)
+    await disableReminders()
+    return
+  }
+  working.value = true
+  const result = await enableReminders({ time: pip.reminderTime, name: pip.plantName, hoursUntilThirsty: pip.hoursToThirsty })
+  working.value = false
+  if (!result.ok) {
+    permissionNote.value = REASONS[result.reason] ?? REASONS.server
     return
   }
   pip.setReminders(true)
@@ -111,6 +128,7 @@ const ROWS = [
               type="button"
               role="switch"
               :aria-checked="pip.remindersOn"
+              :aria-busy="working"
               :data-sound="pip.remindersOn ? 'toggleOff' : 'toggleOn'"
               class="flex min-h-16 w-full items-center gap-3.5 px-4 text-left"
               @click="toggleReminders"
@@ -139,12 +157,14 @@ const ROWS = [
                   {{ t.label }}
                 </button>
               </div>
-              <p v-if="!supported" class="mt-2.5 text-xs font-medium text-bark-400">
-                Reminders arrive once Pip is installed on your phone. Quiet between 10pm and 8am.
+              <p class="mt-2.5 text-xs font-medium text-bark-400">
+                Quiet between 10pm and 8am. No hello if you’ve already visited that day.
               </p>
-              <p v-else class="mt-2.5 text-xs font-medium text-bark-400">Quiet between 10pm and 8am. Never more than a nudge.</p>
             </div>
             <p v-if="permissionNote" class="px-4 py-3 text-xs font-semibold text-clay-400">{{ permissionNote }}</p>
+            <p v-else-if="!pip.remindersOn && mode === 'install'" class="px-4 py-3 text-xs font-semibold text-bark-400">
+              To get reminders on iPhone, add Pip to your Home Screen first.
+            </p>
             <button
               type="button"
               role="switch"

@@ -6,6 +6,7 @@ import './style.css'
 import App from './App.vue'
 import { router } from './router'
 import { usePipStore } from './stores/pip'
+import { registerServiceWorker } from './services/webPush'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,3 +25,6 @@ if (import.meta.env.DEV) {
 }
 
 pip.load().then(() => app.mount('#app'))
+
+// The service worker receives gentle reminders (only needed in a real browser, not the phone app).
+if (!window.Capacitor?.isNativePlatform?.()) registerServiceWorker()

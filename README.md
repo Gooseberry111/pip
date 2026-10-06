@@ -32,7 +32,18 @@ npx cap open android
 
 **Weekly goals.** Three small goals each week (water, stars, game rounds, breathing, saying hi, check-ins, gifts), picked fresh every Monday. Each pays 6 petals; collecting all three opens the bloom box: 25 petals and a rare treasure.
 
-**Gentle reminders.** In the phone app, an optional daily hello at a time you choose, plus a one-off nudge timed for when Pip will actually get thirsty. Never between 10pm and 8am, never guilt-based. Uses `@capacitor/local-notifications` (see `src/services/notifications.js`); in a web browser reminders are skipped.
+**Gentle reminders.** An optional daily hello at a time you choose (skipped if you've already visited that day), plus a one-off nudge timed for when Pip will actually get thirsty. Never between 10pm and 8am, never guilt-based.
+* *Installed web app* (iPhone Home Screen, iOS 16.4+, or Chrome on Android): web push. The app shares its reminder settings with Netlify functions in `netlify/functions`, stored in Netlify Blobs, and `push-send` runs every 15 minutes to send what's due. The service worker is `public/sw.js`.
+* *Capacitor phone app*: the phone schedules them itself with `@capacitor/local-notifications`.
+
+### Setting up web reminders on Netlify
+
+1. Create a key pair once: `npx web-push generate-vapid-keys`
+2. In Netlify, under Site configuration, Environment variables, add:
+   * `VAPID_PUBLIC_KEY` (the public key)
+   * `VAPID_PRIVATE_KEY` (the private key, keep it secret)
+   * `VAPID_SUBJECT` (`mailto:` followed by your email)
+3. Redeploy. On iPhone, add Pip to the Home Screen from Safari, open it from there, and turn on Reminders in Settings.
 
 **Care.** Water drains slowly in real time. Pip is healthy, thirsty or wilting, but never dies, and water always brings it back. Growth comes from watering and from time passing while Pip has water. There are 12 levels across 6 stages: Seed, Sprout, Small, Growing, Mature and Flowering. Reaching a new stage opens a special moment.
 
@@ -83,7 +94,11 @@ src/
   router/       Home / Play / Collection / Garden (hash history for Capacitor)
   services/
     storage/    storage adapter (localStorage now, Firebase later)
-    notifications.js  gentle reminders (Capacitor Local Notifications)
+    notifications.js  gentle reminders (native app or web push)
+    webPush.js  web push subscription for the installed web app
+netlify/
+  functions/    push-key, push-subscribe, push-unsubscribe, push-send (every 15 minutes)
+  lib/push.mjs  shared helpers, including the "what's due?" rules
   stores/       pip.js: the Pinia store (state, time catch up, petals, unlocks)
   utils/        plantLogic.js (pure rules), audio.js, synth.js, sound.js, music.js, haptics.js, timeOfDay.js, shapes.js
   views/        HomeView, PlayView, CollectionView, GardenView, JournalView
