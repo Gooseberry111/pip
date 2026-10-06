@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { getDayPhase, getGreeting, daysTogether } from '@/utils/timeOfDay'
 import { playSound } from '@/utils/sound'
@@ -53,7 +54,21 @@ const sleeping = ref(false)
 const phase = ref(getDayPhase())
 const levelUp = ref(null) // { level, newStage, unlocks } shown in the level up moment
 const pokes = ref({})
-const settingsOpen = ref(false)
+const route = useRoute()
+const router = useRouter()
+
+// Settings is part of the page history, so the back button (or the phone's back gesture)
+// takes you back to exactly where you were.
+const settingsOpen = computed(() => route.query.settings === '1')
+
+function openSettings() {
+  router.push({ query: { ...route.query, settings: '1' } })
+}
+
+function closeSettings() {
+  if (window.history.state?.back) router.back()
+  else router.replace({ query: {} })
+}
 const checkinOpen = ref(false)
 
 const timers = new Set()
@@ -328,7 +343,7 @@ onBeforeUnmount(() => {
         >
           <Icon :name="pip.musicOn ? 'music' : 'music-off'" :size="17" :stroke="2" />
         </button>
-        <button type="button" class="icon-btn" aria-label="Settings" @click="settingsOpen = true">
+        <button type="button" class="icon-btn" aria-label="Settings" @click="openSettings">
           <Icon name="settings" :size="18" :stroke="2" />
         </button>
       </div>
@@ -447,7 +462,7 @@ onBeforeUnmount(() => {
     </div>
 
     <LevelUpMoment :moment="levelUp" @close="closeLevelUp" />
-    <SettingsSheet :open="settingsOpen" @close="settingsOpen = false" />
+    <SettingsSheet :open="settingsOpen" @close="closeSettings" />
     <MoodCheckin :open="checkinOpen" @close="closeCheckin" />
   </section>
 </template>

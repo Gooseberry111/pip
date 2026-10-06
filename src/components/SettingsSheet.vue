@@ -1,6 +1,6 @@
 <script setup>
 // Settings: sound, music, haptics, renaming, and a gentle way to start again.
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { usePipStore } from '@/stores/pip'
 import { remindersMode, enableReminders, disableReminders } from '@/services/notifications'
 import Icon from './Icon.vue'
@@ -13,6 +13,12 @@ const emit = defineEmits(['close'])
 const pip = usePipStore()
 
 const name = ref(pip.plantName)
+const scrolled = ref(false)
+
+// Escape closes too, like going back
+function onKey(e) {
+  if (e.key === 'Escape') emit('close')
+}
 const confirmReset = ref(false)
 const input = ref(null)
 
@@ -22,9 +28,16 @@ watch(
     if (open) {
       name.value = pip.plantName
       confirmReset.value = false
+      scrolled.value = false
+      window.addEventListener('keydown', onKey)
+    } else {
+      window.removeEventListener('keydown', onKey)
     }
   },
+  { immediate: true },
 )
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 function saveName() {
   if (name.value.trim() && name.value !== pip.plantName) pip.rename(name.value)
@@ -77,7 +90,8 @@ async function reset() {
     return
   }
   await pip.devReset()
-  window.location.reload()
+  // start fresh on Home, without Settings open
+  window.location.replace(window.location.pathname)
 }
 
 const ROWS = [
@@ -92,14 +106,20 @@ const ROWS = [
     <Transition name="sheet">
       <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Settings">
         <div class="scrim absolute inset-0" @click="emit('close')" />
-        <div class="panel relative w-full max-w-md rounded-t-[2rem] bg-cream px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 sm:rounded-[2rem]">
-          <div class="mx-auto mb-3 h-1.5 w-10 rounded-full bg-sand-300 sm:hidden" />
-          <div class="flex items-center justify-between">
-            <h2 class="title-xl text-[1.6rem]!">Settings</h2>
-            <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><Icon name="close" :size="18" /></button>
+        <div class="panel relative flex max-h-[calc(100dvh-max(0.75rem,env(safe-area-inset-top)))] w-full max-w-md flex-col rounded-t-[2rem] bg-cream sm:max-h-[90dvh] sm:rounded-[2rem]">
+          <!-- header stays in place while the settings scroll -->
+          <div class="shrink-0 px-5 pb-3 pt-3" :class="{ 'header-lifted': scrolled }">
+            <div class="mx-auto mb-3 h-1.5 w-10 rounded-full bg-sand-300 sm:hidden" />
+            <div class="flex items-center gap-3">
+              <button type="button" class="icon-btn" aria-label="Back" @click="emit('close')">
+                <Icon name="back" :size="19" :stroke="2.2" />
+              </button>
+              <h2 class="title-xl text-[1.6rem]!">Settings</h2>
+            </div>
           </div>
 
-          <p class="eyebrow mt-5 px-1">Sound and feel</p>
+          <div class="overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]" @scroll="scrolled = $event.target.scrollTop > 4">
+          <p class="eyebrow mt-2 px-1">Sound and feel</p>
           <div class="card mt-2 divide-y divide-line overflow-hidden">
             <button
               v-for="row in ROWS"
@@ -144,13 +164,13 @@ const ROWS = [
             </button>
             <div v-if="pip.remindersOn" class="px-4 py-3.5">
               <p class="text-xs font-bold text-bark-400">Daily hello</p>
-              <div class="segmented mt-2">
+              <div class="segmented mt-2 w-full">
                 <button
                   v-for="t in TIMES"
                   :key="t.value"
                   type="button"
                   role="tab"
-                  class="flex-1"
+                  class="min-w-0 flex-1 px-1!"
                   :aria-selected="pip.reminderTime === t.value"
                   @click="pip.setReminders(true, t.value)"
                 >
@@ -219,6 +239,7 @@ const ROWS = [
           </div>
 
           <p class="mt-6 text-center text-xs font-medium text-bark-300">Pip · a little plant to care for, one day at a time</p>
+          </div>
         </div>
       </div>
     </Transition>
@@ -230,6 +251,9 @@ const ROWS = [
   background: rgb(41 31 24 / 0.28);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+}
+.header-lifted {
+  box-shadow: 0 6px 12px -10px rgb(58 45 35 / 0.35);
 }
 .switch {
   position: relative;
