@@ -49,10 +49,13 @@ let ending = false
 // ---- flow ----
 function pick(n) {
   level.value = n
-  phase.value = 'intro'
+  // the how-to card only shows the first time; after that, straight to the countdown
+  if (pip.introSeen.firefly) begin()
+  else phase.value = 'intro'
 }
 
 function begin() {
+  pip.markIntroSeen('firefly')
   phase.value = 'countdown'
 }
 
@@ -196,6 +199,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
       heading="Firefly Night"
       dark
       @select="pick"
+      @help="phase = 'intro'"
       @celebrated="justUnlocked = null"
     />
 
@@ -304,7 +308,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         @start="begin"
         @levels="phase = 'levels'"
       />
-      <Countdown v-if="phase === 'countdown'" dark :label="`Level ${level}`" @done="start" />
+      <Countdown v-if="phase === 'countdown'" dark :label="`Level ${level}`" :goal="`Catch ${cfg.target} fireflies`" @done="start" />
 
       <GameResults
         v-if="phase === 'done' && results"

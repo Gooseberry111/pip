@@ -20,6 +20,10 @@ const POTS = {
   lilac: { light: '#DED2E8', base: '#CBBAD9', dark: '#A996BC', rimLight: '#E8DFF0', rimDark: '#B9A7CB', accent: '#FFFBF4' },
   cloud: { light: '#D3E6F0', base: '#B7D3E3', dark: '#93B3C8', rimLight: '#E1EEF5', rimDark: '#A3C2D4', accent: '#FFFFFF' },
   moon: { light: '#A6B1C8', base: '#8E9AB4', dark: '#73809C', rimLight: '#B6C0D4', rimDark: '#8592AD', accent: '#F3EAD6' },
+  mint: { light: '#D6EEE2', base: '#BFE2D0', dark: '#9CC8B2', rimLight: '#E4F4EC', rimDark: '#ADD4C0' },
+  cocoa: { light: '#B88E70', base: '#A07558', dark: '#835C43', rimLight: '#C9A285', rimDark: '#93684C' },
+  coral: { light: '#F7B9A0', base: '#EE9C82', dark: '#D47C63', rimLight: '#FBD0A4', rimDark: '#EDAF7E' },
+  midnight: { light: '#5C6C96', base: '#4A5A84', dark: '#384669', rimLight: '#6E7EA6', rimDark: '#4F5F8A' },
 }
 
 const p = computed(() => POTS[props.pot] ?? POTS.terracotta)

@@ -63,24 +63,50 @@ export async function enableWebPush(schedule) {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return { ok: false, reason: 'denied' }
 
+  // 1. ask the server for its public key
+  let publicKey
   try {
-    const keyRes = await fetch(`${API}/key`)
-    const { publicKey } = keyRes.ok ? await keyRes.json() : {}
-    if (!publicKey) return { ok: false, reason: 'server' }
+    const keyRes = await fetch(`${API}/key`, { cache: 'no-store' })
+    const type = keyRes.headers.get('content-type') || ''
+    if (keyRes.status === 404 || !type.includes('application/json')) return { ok: false, reason: 'functions' }
+    const data = await keyRes.json()
+    if (!data.publicKey) return { ok: false, reason: 'keys', detail: data.problem }
+    publicKey = data.publicKey
+  } catch (err) {
+    return { ok: false, reason: 'offline', detail: err?.message }
+  }
 
+  // 2. subscribe this phone
+  let sub
+  try {
     const reg = await navigator.serviceWorker.ready
-    let sub = await reg.pushManager.getSubscription()
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(publicKey) })
+    sub = await reg.pushManager.getSubscription()
+    // a subscription made with an older key won't work with the new one
+    if (sub && sub.options?.applicationServerKey) {
+      const current = new Uint8Array(sub.options.applicationServerKey)
+      const wanted = base64ToBytes(publicKey)
+      if (current.length !== wanted.length || current.some((v, i) => v !== wanted[i])) {
+        await sub.unsubscribe()
+        sub = null
+      }
     }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(publicKey) })
+  } catch (err) {
+    return { ok: false, reason: 'subscribe', detail: err?.message }
+  }
+
+  // 3. save the schedule on the server
+  try {
     const res = await fetch(`${API}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload(sub, schedule)),
     })
-    return res.ok ? { ok: true } : { ok: false, reason: 'server' }
-  } catch {
-    return { ok: false, reason: 'server' }
+    if (res.ok) return { ok: true }
+    const data = await res.json().catch(() => ({}))
+    return { ok: false, reason: 'save', detail: data.error || `status ${res.status}` }
+  } catch (err) {
+    return { ok: false, reason: 'offline', detail: err?.message }
   }
 }
 

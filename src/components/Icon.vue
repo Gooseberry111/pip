@@ -75,6 +75,17 @@ defineProps({
       <circle cx="12" cy="12" r="4.5" />
       <circle cx="12" cy="12" r="1" fill="currentColor" />
     </template>
+    <template v-else-if="name === 'chat'">
+      <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V16h0a2.5 2.5 0 0 1-2-2.5v-7Z" />
+      <path d="M9 9.5h.01M12 9.5h.01M15 9.5h.01" stroke-width="2.6" />
+    </template>
+    <template v-else-if="name === 'send'">
+      <path d="M5 12h12" />
+      <path d="m12 6 6 6-6 6" />
+    </template>
+    <template v-else-if="name === 'trash'">
+      <path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" />
+    </template>
     <template v-else-if="name === 'check'">
       <path d="m6 12.5 4 4 8-9" />
     </template>
@@ -152,6 +163,42 @@ defineProps({
     </template>
     <template v-else-if="name === 'moon'">
       <path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5Z" />
+    </template>
+    <template v-else-if="name === 'farm'">
+      <path d="M3.5 10.5 12 4l8.5 6.5" />
+      <path d="M5.5 9v10.5h13V9" />
+      <path d="M9.5 19.5v-5h5v5" />
+      <path d="M9.5 14.5l5 5M14.5 14.5l-5 5" />
+    </template>
+    <template v-else-if="name === 'shop'">
+      <path d="M5 8h14l-1.2 11.2a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3Z" />
+      <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+    </template>
+    <template v-else-if="name === 'friends'">
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8" />
+      <circle cx="16.5" cy="9.5" r="2.4" />
+      <path d="M16 14.3c2.3.1 4 1.6 4.5 4.2" />
+    </template>
+    <template v-else-if="name === 'move'">
+      <path d="M12 3v18M3 12h18" />
+      <path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
+    </template>
+    <template v-else-if="name === 'copy'">
+      <rect x="8" y="8" width="12" height="12" rx="2.5" />
+      <path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" />
+    </template>
+    <template v-else-if="name === 'share'">
+      <path d="M12 15V4M8 8l4-4 4 4" />
+      <path d="M6 11v7.5A1.5 1.5 0 0 0 7.5 20h9a1.5 1.5 0 0 0 1.5-1.5V11" />
+    </template>
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+    </template>
+    <template v-else-if="name === 'undo'">
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </template>
     <template v-else-if="name === 'refresh'">
       <path d="M19 12a7 7 0 1 1-2.1-5" />

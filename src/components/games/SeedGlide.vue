@@ -69,7 +69,9 @@ function resize() {
 // ---- flow ----
 function pick(n) {
   level.value = n
-  phase.value = 'intro'
+  // the how-to card only shows the first time; after that, straight to the countdown
+  if (pip.introSeen.glide) begin()
+  else phase.value = 'intro'
   nextTick(() => {
     resize()
     reset()
@@ -78,6 +80,7 @@ function pick(n) {
 }
 
 function begin() {
+  pip.markIntroSeen('glide')
   phase.value = 'countdown'
 }
 
@@ -409,6 +412,7 @@ onBeforeUnmount(() => {
       :celebrate="justUnlocked"
       heading="Seed Glide"
       @select="pick"
+      @help="phase = 'intro'"
       @celebrated="justUnlocked = null"
     />
 
@@ -451,7 +455,7 @@ onBeforeUnmount(() => {
         @start="begin"
         @levels="phase = 'levels'"
       />
-      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" @done="start" />
+      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" :goal="`Pass ${cfg.branches} branches`" @done="start" />
 
       <GameResults
         v-if="phase === 'done' && results"

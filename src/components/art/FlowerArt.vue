@@ -14,6 +14,9 @@ const FLOWERS = {
   sunny: { petals: 13, tip: '#F8D97E', base: '#E7AA45', center: '#94694A', centerDark: '#6F4C35', w: 3, len: 10 },
   poppy: { petals: 5, tip: '#F6A48D', base: '#DF6650', center: '#5B4636', centerDark: '#3E2F25', w: 7.4, len: 8.6, round: true },
   tulip: { tip: '#F6B4A6', base: '#E58876', center: '#F6B4A6', centerDark: '#E58876' },
+  violet: { petals: 5, tip: '#C9B2E6', base: '#8F6FC2', center: '#F8E2A6', centerDark: '#E7B96A', w: 6.4, len: 8, round: true },
+  cornflower: { petals: 9, tip: '#A9C8F0', base: '#5B86D4', center: '#4A5A84', centerDark: '#384669', w: 3.6, len: 10 },
+  peony: { petals: 8, tip: '#FBDDE3', base: '#EFA3B4', center: '#F9E6B8', centerDark: '#EFC97D', w: 6.2, len: 9, round: true },
 }
 
 const f = computed(() => FLOWERS[props.flower] ?? FLOWERS.daisy)

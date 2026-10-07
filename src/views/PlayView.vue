@@ -4,7 +4,22 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { DAILY_TASKS } from '@/data/daily'
 import { PACKET_COST, packetItems } from '@/data/items'
-import { GAMES, COMING_SOON, MEMORY_LEVELS, RAIN_LEVELS, FIREFLY_LEVELS, GLIDE_LEVELS, PUZZLE_LEVELS } from '@/data/games'
+import {
+  GAMES,
+  GAME_GROUPS,
+  COMING_SOON,
+  MEMORY_LEVELS,
+  RAIN_LEVELS,
+  FIREFLY_LEVELS,
+  GLIDE_LEVELS,
+  PUZZLE_LEVELS,
+  BURST_LEVELS,
+  RACE_LEVELS,
+  RHYTHM_LEVELS,
+  HOTEL_LEVELS,
+  POP_LEVELS,
+} from '@/data/games'
+import { PICTURE_LEVELS, SEARCH_LEVELS } from '@/data/words'
 import { haptic } from '@/utils/haptics'
 import Icon from '@/components/Icon.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -20,6 +35,14 @@ import FireflyNight from '@/components/games/FireflyNight.vue'
 import FlowerSong from '@/components/games/FlowerSong.vue'
 import SeedGlide from '@/components/games/SeedGlide.vue'
 import BloomPuzzle from '@/components/games/BloomPuzzle.vue'
+import BloomBurst from '@/components/games/BloomBurst.vue'
+import GardenTacToe from '@/components/games/GardenTacToe.vue'
+import GardenCheckers from '@/components/games/GardenCheckers.vue'
+import SnailRace from '@/components/games/SnailRace.vue'
+import RainRhythm from '@/components/games/RainRhythm.vue'
+import BugHotel from '@/components/games/BugHotel.vue'
+import PetalPop from '@/components/games/PetalPop.vue'
+import LeafWords from '@/components/games/LeafWords.vue'
 import PacketOpening from '@/components/games/PacketOpening.vue'
 
 const pip = usePipStore()
@@ -45,11 +68,64 @@ const LEVEL_COUNTS = {
   firefly: FIREFLY_LEVELS.length,
   glide: GLIDE_LEVELS.length,
   puzzle: PUZZLE_LEVELS.length,
+  burst: BURST_LEVELS.length,
+  race: RACE_LEVELS.length,
+  rhythm: RHYTHM_LEVELS.length,
+  hotel: HOTEL_LEVELS.length,
+  pop: POP_LEVELS.length,
 }
-const ART_BG = { rain: '#D7E6EC', memory: '#E1ECD8', firefly: '#2E3754', song: '#F0E4EE', breathe: '#E8E2EE', glide: '#E3EDF1', puzzle: '#F6E5E1' }
+const ART_BG = {
+  rain: '#D7E6EC',
+  memory: '#E1ECD8',
+  firefly: '#2E3754',
+  song: '#F0E4EE',
+  breathe: '#E8E2EE',
+  glide: '#E3EDF1',
+  puzzle: '#F6E5E1',
+  burst: '#EAF0DF',
+  tac: '#EEF3E6',
+  checkers: '#F6E5E1',
+  race: '#F1EBDD',
+  rhythm: '#E7E4F0',
+  hotel: '#F3E9DA',
+  pop: '#F9E6EA',
+  words: '#E4EED9',
+}
+
+// the Play tab, in sections. An odd one out at the top of a section gets a wide tile.
+const groups = computed(() =>
+  GAME_GROUPS.map((g) => {
+    const games = GAMES.filter((x) => x.group === g.id)
+    return { ...g, games, wideFirst: games.length % 2 === 1 }
+  }),
+)
+
+const GAME_COMPONENTS = {
+  breathe: BreatheWithPip,
+  rain: RaindropCatch,
+  memory: SeedMemory,
+  firefly: FireflyNight,
+  song: FlowerSong,
+  glide: SeedGlide,
+  puzzle: BloomPuzzle,
+  burst: BloomBurst,
+  tac: GardenTacToe,
+  checkers: GardenCheckers,
+  race: SnailRace,
+  rhythm: RainRhythm,
+  hotel: BugHotel,
+  pop: PetalPop,
+  words: LeafWords,
+}
 
 function meta(game) {
+  if (game.id === 'words') {
+    const stars = pip.totalStars('words') + pip.totalStars('search')
+    return `${stars} / ${(PICTURE_LEVELS.length + SEARCH_LEVELS.length) * 3}`
+  }
   if (game.levels) return `${pip.totalStars(game.id)} / ${LEVEL_COUNTS[game.id] * 3}`
+  if (game.id === 'tac') return 'Easy, medium, hard'
+  if (game.id === 'checkers') return 'Classic rules'
   if (game.id === 'song') return pip.bestScores.song ? `Best ${pip.bestScores.song} notes` : 'New'
   return '1 minute'
 }
@@ -57,6 +133,7 @@ function meta(game) {
 function onTask(task) {
   if (task.id === 'breathe') activeGame.value = 'breathe'
   else if (task.id === 'play') activeGame.value = 'rain'
+  else if (task.id === 'farm') router.push('/farm')
   else router.push('/')
 }
 
@@ -153,16 +230,21 @@ function tapSoon(id) {
       <h2 class="title-md">Games</h2>
       <span class="eyebrow">{{ GAMES.length }} to play</span>
     </div>
-    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <section v-for="g in groups" :key="g.id" class="mt-5 first-of-type:mt-3">
+      <div class="flex items-baseline gap-2">
+        <h3 class="font-display text-base font-semibold text-bark-600">{{ g.title }}</h3>
+        <span class="truncate text-xs font-semibold text-bark-400">{{ g.blurb }}</span>
+      </div>
+    <div class="mt-2.5 grid grid-cols-2 gap-3 sm:grid-cols-3">
       <button
-        v-for="(game, i) in GAMES"
+        v-for="(game, i) in g.games"
         :key="game.id"
         type="button"
         class="game-tile card group overflow-hidden text-left transition duration-300 active:scale-[0.98]"
-        :class="{ 'col-span-2 sm:col-span-1': i === 0 }"
+        :class="{ 'col-span-2 sm:col-span-1': i === 0 && g.wideFirst }"
         @click="activeGame = game.id"
       >
-        <div class="relative overflow-hidden" :class="i === 0 ? 'aspect-[16/8] sm:aspect-[16/11]' : 'aspect-[16/11]'" :style="{ background: ART_BG[game.id] }">
+        <div class="relative overflow-hidden" :class="i === 0 && g.wideFirst ? 'aspect-[16/8] sm:aspect-[16/11]' : 'aspect-[16/11]'" :style="{ background: ART_BG[game.id] }">
           <GameArt :game="game.id" class="transition-transform duration-500 group-hover:scale-105" />
           <span
             class="absolute left-2.5 top-2.5 rounded-full px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-wider"
@@ -181,6 +263,7 @@ function tapSoon(id) {
         </div>
       </button>
     </div>
+    </section>
 
     <!-- seed packets -->
     <div class="packet-card relative mt-8 overflow-hidden rounded-[var(--radius-card)] p-5">
@@ -246,13 +329,7 @@ function tapSoon(id) {
       </div>
     </div>
 
-    <BreatheWithPip v-if="activeGame === 'breathe'" @close="activeGame = null" />
-    <RaindropCatch v-if="activeGame === 'rain'" @close="activeGame = null" />
-    <SeedMemory v-if="activeGame === 'memory'" @close="activeGame = null" />
-    <FireflyNight v-if="activeGame === 'firefly'" @close="activeGame = null" />
-    <FlowerSong v-if="activeGame === 'song'" @close="activeGame = null" />
-    <SeedGlide v-if="activeGame === 'glide'" @close="activeGame = null" />
-    <BloomPuzzle v-if="activeGame === 'puzzle'" @close="activeGame = null" />
+    <component :is="GAME_COMPONENTS[activeGame]" v-if="activeGame" @close="activeGame = null" />
 
     <PacketOpening :open="packetOpen" @opened="packetOpen = false" />
     <UnlockReveal :item="packetOpen ? null : revealed" :headline="revealHeadline" @use="useRevealed" @close="revealed = null" />

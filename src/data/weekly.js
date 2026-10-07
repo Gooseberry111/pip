@@ -9,6 +9,12 @@ export const WEEKLY_POOL = [
   { id: 'hello', event: 'petDay', target: 4, label: (n, name) => `Say hi to ${name} on ${n} days` },
   { id: 'checkin', event: 'checkin', target: 4, label: (n) => `Check in on ${n} days` },
   { id: 'gift', event: 'gift', target: 4, label: (n) => `Open ${n} daily gifts` },
+  { id: 'harvest', event: 'harvest', target: 25, label: (n) => `Harvest ${n} times on the farm` },
+  { id: 'cook', event: 'cook', target: 4, label: (n) => `Cook ${n} dishes in the kitchen` },
+  { id: 'orders', event: 'order', target: 4, label: (n) => `Fill ${n} critter orders` },
+  { id: 'drinks', event: 'drink', target: 12, label: (n, name) => `Give ${name} ${n} drinks at drink times` },
+  { id: 'perfect', event: 'perfectDay', target: 2, label: (n) => `Have ${n} perfect days of drinks` },
+  { id: 'wishes', event: 'wish', target: 3, label: (n, name) => `Make ${n} of ${name}’s wishes come true` },
 ]
 
 export const GOAL_REWARD = 6

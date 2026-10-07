@@ -6,6 +6,7 @@ export const DAILY_TASKS = [
   { id: 'pet', label: (name) => `Say hi to ${name}`, reward: 2, icon: 'heart' },
   { id: 'breathe', label: () => 'Breathe together for a minute', reward: 5, icon: 'wind' },
   { id: 'play', label: () => 'Play a little game', reward: 5, icon: 'play' },
+  { id: 'farm', label: () => 'Harvest something on the farm', reward: 3, icon: 'farm' },
 ]
 
 export const GIFT_MESSAGES = [

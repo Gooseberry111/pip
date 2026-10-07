@@ -19,18 +19,49 @@ export function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
+// Environment values are often pasted with stray spaces or quotes, so tidy them first.
+function clean(value) {
+  return (value || '').trim().replace(/^['"]|['"]$/g, '').trim()
+}
+
+export function vapid() {
+  let subject = clean(process.env.VAPID_SUBJECT) || 'mailto:hello@example.com'
+  if (!/^(mailto:|https:\/\/)/.test(subject)) subject = `mailto:${subject}`
+  return {
+    publicKey: clean(process.env.VAPID_PUBLIC_KEY),
+    privateKey: clean(process.env.VAPID_PRIVATE_KEY),
+    subject,
+  }
+}
+
+function byteLength(base64url) {
+  try {
+    return Buffer.from(base64url, 'base64url').length
+  } catch {
+    return 0
+  }
+}
+
+/** What's wrong with the reminder setup, in plain words, or null if it all looks right. */
+export function setupProblem() {
+  const { publicKey, privateKey } = vapid()
+  if (!publicKey && !privateKey) return 'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not set in Netlify'
+  if (!publicKey) return 'VAPID_PUBLIC_KEY is not set in Netlify'
+  if (!privateKey) return 'VAPID_PRIVATE_KEY is not set in Netlify'
+  if (byteLength(publicKey) !== 65) return 'VAPID_PUBLIC_KEY does not look right (copy the Public Key line exactly)'
+  if (byteLength(privateKey) !== 32) return 'VAPID_PRIVATE_KEY does not look right (copy the Private Key line exactly)'
+  return null
+}
+
 export function configured() {
-  return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
+  return setupProblem() === null
 }
 
 let ready = false
 function setup() {
   if (ready) return
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:hello@example.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  )
+  const { subject, publicKey, privateKey } = vapid()
+  webpush.setVapidDetails(subject, publicKey, privateKey)
   ready = true
 }
 

@@ -66,6 +66,8 @@ export const LEAF_COLORS = {
   variegated: { top: '#93BA7E', bottom: '#6E995D', vein: '#E4EDD0', stripe: '#E3EDCF' },
   rosy: { top: '#9CC189', bottom: '#D9A3A2', vein: '#F2D6D2' },
   starlight: { top: '#79A894', bottom: '#557F70', vein: '#D3E8DD' },
+  golden: { top: '#C9C46E', bottom: '#A79E4C', vein: '#F1EBC2' },
+  frost: { top: '#B7D2CF', bottom: '#8FB3B0', vein: '#EEF6F5' },
 }
 
 export const STEM_COLOR = '#79A066'

@@ -12,12 +12,18 @@ const route = useRoute()
 
 const tabs = [
   { to: '/', label: 'Home', icon: 'home' },
+  { to: '/farm', label: 'Farm', icon: 'farm' },
   { to: '/play', label: 'Play', icon: 'play' },
+  { to: '/shop', label: 'Shop', icon: 'shop' },
   { to: '/collection', label: 'Collection', icon: 'collection' },
-  { to: '/garden', label: 'Garden', icon: 'garden' },
 ]
 
-const activeIndex = computed(() => Math.max(0, tabs.findIndex((t) => t.to === route.path)))
+// visiting a friend's farm and Pip's garden still light up the nearest tab
+const ALIAS = { '/garden': '/collection', '/journal': '/' }
+const activeIndex = computed(() => {
+  const path = route.path.startsWith('/visit') ? '/farm' : ALIAS[route.path] ?? route.path
+  return Math.max(0, tabs.findIndex((t) => t.to === path))
+})
 </script>
 
 <template>
@@ -25,7 +31,7 @@ const activeIndex = computed(() => Math.max(0, tabs.findIndex((t) => t.to === ro
     class="fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     aria-label="Main"
   >
-    <div class="relative flex w-full max-w-sm items-center rounded-[1.75rem] border border-line bg-surface/92 p-1.5 shadow-float backdrop-blur-xl">
+    <div class="relative flex w-full max-w-md items-center rounded-[1.75rem] border border-line bg-surface/92 p-1.5 shadow-float backdrop-blur-xl">
       <span
         class="pill absolute inset-y-1.5 left-1.5 rounded-[1.35rem] bg-sand-100"
         :style="{ width: `calc((100% - 0.75rem) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }"
@@ -40,7 +46,7 @@ const activeIndex = computed(() => Math.max(0, tabs.findIndex((t) => t.to === ro
       >
         <a
           :href="href"
-          class="relative flex min-h-13 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.35rem] text-[0.6875rem] font-bold tracking-wide transition-colors duration-300"
+          class="relative flex min-h-13 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.35rem] text-[0.625rem] font-bold tracking-wide transition-colors duration-300"
           :class="i === activeIndex ? 'text-bark-600' : 'text-bark-300 hover:text-bark-500'"
           :aria-current="i === activeIndex ? 'page' : undefined"
           @click="navigate"

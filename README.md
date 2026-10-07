@@ -32,6 +32,15 @@ npx cap open android
 
 **Weekly goals.** Three small goals each week (water, stars, game rounds, breathing, saying hi, check-ins, gifts), picked fresh every Monday. Each pays 6 petals; collecting all three opens the bloom box: 25 petals and a rare treasure.
 
+**Did you know?** A new fact every 3 hours: around 60 short, accurate facts about plants, nature, water and wellbeing, plus gentle thoughts from Pip (`src/data/facts.js`). A chip appears on Home when one is waiting (the first read of each is worth a petal), read facts collect in the journal's Fact book, and some daily reminders arrive as a fun fact.
+
+**Talk to Pip.** A short, warm chat with your plant, free by default.
+* *Pip's own brain* (`src/utils/pipBrain.js`): built in, free, private and offline. It recognises what a message is about (greetings, feelings, stress, facts, jokes, sleep, games and more) and answers with hand-written replies that use Pip's real state.
+* *Optional free AI*: add a free Google AI Studio key as `GEMINI_API_KEY` in Netlify and Pip becomes properly conversational through `netlify/functions/chat.mjs` (default model `gemini-3.5-flash`, change with `GEMINI_MODEL`). Google's free tier uses content to improve its products, and has daily limits; `PIP_CHAT_DAILY_LIMIT` (default 30 per phone per day) keeps usage inside them. Whenever the AI can't answer (limit reached, busy, offline), Pip's own brain answers instead.
+* A paid Claude key (`ANTHROPIC_API_KEY`, optional `PIP_CHAT_MODEL`) also works if there's no Gemini key.
+
+Pip never claims to be a person or a counsellor. If a message suggests someone may be in danger, the app shows real helplines (`src/utils/safety.js`) whatever the reply says. Chats are saved on the phone.
+
 **Gentle reminders.** An optional daily hello at a time you choose (skipped if you've already visited that day), plus a one-off nudge timed for when Pip will actually get thirsty. Never between 10pm and 8am, never guilt-based.
 * *Installed web app* (iPhone Home Screen, iOS 16.4+, or Chrome on Android): web push. The app shares its reminder settings with Netlify functions in `netlify/functions`, stored in Netlify Blobs, and `push-send` runs every 15 minutes to send what's due. The service worker is `public/sw.js`.
 * *Capacitor phone app*: the phone schedules them itself with `@capacitor/local-notifications`.
@@ -44,6 +53,7 @@ npx cap open android
    * `VAPID_PRIVATE_KEY` (the private key, keep it secret)
    * `VAPID_SUBJECT` (`mailto:` followed by your email)
 3. Redeploy. On iPhone, add Pip to the Home Screen from Safari, open it from there, and turn on Reminders in Settings.
+4. To check the setup, open `/api/push/key` on your site: if anything is missing, `problem` says what.
 
 **Care.** Water drains slowly in real time. Pip is healthy, thirsty or wilting, but never dies, and water always brings it back. Growth comes from watering and from time passing while Pip has water. There are 12 levels across 6 stages: Seed, Sprout, Small, Growing, Mature and Flowering. Reaching a new stage opens a special moment.
 
@@ -52,18 +62,30 @@ npx cap open android
 * doing the day's little things (water, say hi, breathe, play). Each pays out once a day, with no streaks and no penalty for skipping
 * playing games
 
-**Play.**
-* *Raindrop Catch:* slide Pip's pot to catch the rain across 10 levels with goals (catch, score, golden drops, combos). Grumpy mud drops cost one of three hearts, and later levels rain harder, faster and muddier. The rain you catch waters Pip.
-* *Seed Glide:* hold to float a dandelion seed through gaps between branches, collecting dewdrops. 8 levels; later ones sway the branches and add gusts of wind.
-* *Seed Memory:* 9 levels from 8 to 28 cards with tight timers. Later levels deal cards that look alike. Hints light up a pair (3 petals, 2 per round).
-* *Bloom Puzzle:* slide the tiles back into a picture before time runs out, from 3x3 up to 5x5 across 6 levels. Peek at the finished picture for 3 petals (2 per round).
-* *Firefly Night:* tap fireflies before they fade and leave the moths alone, across 8 levels that get faster and busier.
-* *Flower Song:* Pip plays a tune on four flowers; repeat it as it grows one note longer and a little faster each round.
-* *Breathe Together:* one calm minute of slow breathing with Pip.
-* *Mystery seed packets:* spend 20 petals and tap the packet open to reveal one of 10 rare treasures that can't be grown.
-* *Coming soon:* Snail Race, Rain Rhythm, Bug Hotel and Petal Pop are shown as previews (listed in `COMING_SOON` in `src/data/games.js`).
+**Play.** Games sit in four sections on the Play tab: Puzzles, Arcade, Play together, and Calm and music.
 
-Levels award 1 to 3 stars and unlock the next level. Clearing a level takes a decent try; three stars needs a near perfect run: no hearts lost (or few mistakes) and at least 30% of the time left (see `starRating` in `src/data/games.js`). Level designs and rewards live in [`src/data/games.js`](src/data/games.js).
+*Puzzles*
+* *Bloom Burst:* a match 3 on a 7 x 8 board, over 30 levels. Swipe or tap to swap flowers. 4 in a line makes a watering can that sweeps its row or column, an L or T makes a bee that clears around it, and 5 in a line makes a rainbow seed that clears a whole kind. Swap two specials together for a bigger burst. Goals: reach a score, collect certain flowers, or wash away mud (some mud takes two washes). Leftover moves turn into a bloom bonus. Out of moves? 5 more cost 12 petals, once per try. Goals and star scores were tuned with a bot (`src/utils/burstEngine.js` holds the rules).
+* *Leaf Words:* two word games. *Picture Words*: four pictures share one word; spell it from letter tiles against the clock (20 levels of 5 words, 3 to 10 letters; reveal a letter for 3 petals). *Word Search*: drag across the letters to find hidden words; later levels hide them diagonally and backwards, on grids up to 12 x 12 (20 levels). Puzzles live in `src/data/words.js`.
+* *Bug Hotel:* sort the bugs so every tower holds one kind. Bugs only stack on their own kind or in an empty tower. 24 levels up to 7 kinds and 6 rooms high; the toughest leave only one spare tower. Every shuffle is checked by a solver so it can be sorted, and the solver's move count is the par. Undo and restart are there, but 3 stars means par or better with no undos.
+* *Bloom Puzzle* (20 levels, 3x3 up to 5x5 against the clock) and *Seed Memory* (20 levels, up to 32 lookalike cards).
+
+*Arcade*
+* *Petal Pop:* a bubble shooter. Drag to aim, bounce off the walls, pop 3 or more of a colour and drop anything left hanging. Shots that pop nothing bring the ceiling closer. 20 levels; stars by shots used, with a tighter target on later levels.
+* *Raindrop Catch*, *Seed Glide* and *Firefly Night*: 20 levels each, getting faster, busier and tighter all the way.
+
+*Play together*
+* *Garden Tac Toe:* sprouts against blossoms on a classic 3 x 3 or a big 5 x 5 board (four in a row). Play Pip on Easy, Medium or Hard, or a friend on the same phone. Matches are first to 3 round wins, up to 5 rounds. On Hard 3 x 3, Pip plays perfectly, so a draw is the best result.
+* *Garden Checkers:* ladybirds against beetles by the classic rules (jumps are compulsory, multi jumps, crowning). Play Pip on three levels, or a friend; the board turns for each player. Rules and Pip's thinking are in `src/utils/checkersEngine.js`.
+* *Snail Race:* tap to speed your snail along. Each tap uses stamina, and running out means a short nap. 20 levels against quicker and cleverer computer snails, longer tracks and rivals who sprint at the finish (3 stars: win without a nap), or a party race for 2 to 4 players with a pad each.
+
+*Calm and music*
+* *Rain Rhythm:* drops fall down 3 or 4 lanes in time with the music; tap each as it reaches the line. Each drop you catch plays a note of the tune. 20 songs from 84 to 150 bpm; the last ones fill in the off beats and are stricter about timing. Timing runs on the audio clock; keys D F J K work on a keyboard.
+* *Flower Song* and *Breathe Together*, as before.
+* *Mystery seed packets:* spend 20 petals and tap the packet open to reveal one of 10 rare treasures that can't be grown.
+* *Coming soon:* Mini Golf and Pond Fishing are shown as previews (listed in `COMING_SOON` in `src/data/games.js`).
+
+Every game with levels has at least 20 (Bloom Burst has 30, Bug Hotel 24). The second half of each level map is tagged Hard and the last few Expert. Levels award 1 to 3 stars and unlock the next level. The how to play card shows the first time you play a game; after that, picking a level goes straight to a short countdown that names the level and its goal. "How to play" on the level map brings the card back. Clearing a level takes a decent try; three stars needs a near perfect run. Level designs and rewards live in [`src/data/games.js`](src/data/games.js).
 
 **Sound and music.** Every tap makes a soft sound (an element can choose another sound with `data-sound="name"`, or none with `data-sound="none"`). Sounds and music are built from small synthesised instruments in [`src/utils/synth.js`](src/utils/synth.js) (kalimba, marimba, bells, electric piano, soft bass, bubbles, a wooden tok) with a gentle room reverb, all in one key so effects harmonise with the music. Background music is arranged live in [`src/utils/music.js`](src/utils/music.js): a quiet lullaby at home and its own track in each game. Music can be muted from the music button on Home, in every game, or in Settings, where sound effects and haptics can also be switched off.
 
@@ -88,8 +110,10 @@ src/
   components/   Pip, PipStatus, WaterButton, GrowthProgress, HomeStage, GiftBox,
                 GrowthMoment, UnlockReveal, CollectionItem, Garden, BottomNavigation…
     art/        SVG pieces: pots, leaves, flowers, decorations, scenes
-    games/      RaindropCatch, SeedMemory, FireflyNight, FlowerSong, BreatheWithPip,
-                PacketOpening, plus shared GameShell, LevelSelect, LevelIntro, GameResults
+    games/      BloomBurst, LeafWords, BugHotel, PetalPop, GardenTacToe, GardenCheckers,
+                SnailRace, RainRhythm, RaindropCatch, SeedMemory, FireflyNight, SeedGlide,
+                BloomPuzzle, FlowerSong, BreatheWithPip, PacketOpening, plus shared
+                GameShell, LevelSelect, LevelIntro, Countdown, GameResults
   data/         stages, items, games, daily things, weekly goals, moods, everything Pip says
   router/       Home / Play / Collection / Garden (hash history for Capacitor)
   services/
@@ -97,7 +121,7 @@ src/
     notifications.js  gentle reminders (native app or web push)
     webPush.js  web push subscription for the installed web app
 netlify/
-  functions/    push-key, push-subscribe, push-unsubscribe, push-send (every 15 minutes)
+  functions/    chat (talk to Pip), push-key, push-subscribe, push-unsubscribe, push-send (every 15 minutes)
   lib/push.mjs  shared helpers, including the "what's due?" rules
   stores/       pip.js: the Pinia store (state, time catch up, petals, unlocks)
   utils/        plantLogic.js (pure rules), audio.js, synth.js, sound.js, music.js, haptics.js, timeOfDay.js, shapes.js

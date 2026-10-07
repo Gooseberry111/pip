@@ -1,12 +1,13 @@
 // Saves (or updates) one phone's reminder settings: when to say hello, Pip's name,
 // the person's timezone, and when Pip will next get thirsty.
-import { store, keyFor, json, configured } from '../lib/push.mjs'
+import { store, keyFor, json, setupProblem } from '../lib/push.mjs'
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Use POST' }, 405)
-  if (!configured()) return json({ error: 'Reminders are not set up on this server' }, 503)
+  const problem = setupProblem()
+  if (problem) return json({ error: problem }, 503)
 
   let body
   try {
@@ -20,8 +21,15 @@ export default async (req) => {
   if (!/^https:\/\//.test(sub.endpoint)) return json({ error: 'Invalid endpoint' }, 400)
 
   const key = keyFor(sub.endpoint)
-  const blobs = store()
-  const existing = (await blobs.get(key, { type: 'json' })) || {}
+  let blobs
+  let existing
+  try {
+    blobs = store()
+    existing = (await blobs.get(key, { type: 'json' })) || {}
+  } catch (err) {
+    console.error('blobs read failed', err)
+    return json({ error: `Could not open reminder storage: ${err?.message || err}` }, 500)
+  }
 
   const record = {
     ...existing,
@@ -34,7 +42,12 @@ export default async (req) => {
     updatedAt: Date.now(),
   }
 
-  await blobs.setJSON(key, record)
+  try {
+    await blobs.setJSON(key, record)
+  } catch (err) {
+    console.error('blobs write failed', err)
+    return json({ error: `Could not save reminder settings: ${err?.message || err}` }, 500)
+  }
   return json({ ok: true })
 }
 

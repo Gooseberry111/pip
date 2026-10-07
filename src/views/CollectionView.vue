@@ -28,7 +28,8 @@ const ringOffset = computed(() => 2 * Math.PI * 22 * (1 - collected.value / tota
 const tabIndex = computed(() => CATEGORIES.findIndex((c) => c.id === tab.value))
 
 // Grown items first (by level), then the rare ones from seed packets.
-const items = computed(() => [...ITEMS[tab.value]].sort((a, b) => (a.packet ? 99 : a.level) - (b.packet ? 99 : b.level)))
+const rank = (i) => (i.shop ? 98 : i.packet ? 99 : i.level)
+const items = computed(() => [...ITEMS[tab.value]].sort((a, b) => rank(a) - rank(b)))
 const hasUnseen = (category) => pip.unseenItems.some((key) => key.startsWith(`${category}:`))
 const isNew = (category, id) => pip.unseenItems.includes(`${category}:${id}`)
 
@@ -68,7 +69,9 @@ function showLocked(item) {
   haptic('light')
   toast.value = item.packet
     ? 'This one hides in mystery seed packets. Earn petals in Play.'
-    : `Keep caring for ${pip.plantName}. This grows at level ${item.level}.`
+    : item.shop
+      ? `Find this in the shop for ${item.shop} petals.`
+      : `Keep caring for ${pip.plantName}. This grows at level ${item.level}.`
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 3200)
 }

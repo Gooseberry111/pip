@@ -28,6 +28,16 @@ const TRACKS = {
   glide: { bpm: 100, root: 64, prog: [IV, I, V, vi], lead: 'kalimba', comp: 'epiano', density: 0.45, swing: 0.08, volume: 0.58, seed: 13, shaker: 'soft' },
   // Bloom Puzzle: unhurried thinking music
   puzzle: { bpm: 80, root: 62, prog: [I, iii(), IV, V], lead: 'marimba', comp: 'epiano', density: 0.32, swing: 0.12, volume: 0.55, seed: 17 },
+  // Bloom Burst: bright and bubbly
+  burst: { bpm: 108, root: 65, prog: [I, vi, ii, V], lead: 'marimba', comp: 'epiano', density: 0.5, swing: 0.1, volume: 0.56, seed: 19, shaker: 'soft' },
+  // Petal Pop: playful
+  pop: { bpm: 100, root: 60, prog: [IV, V, iii(), vi], lead: 'kalimba', comp: 'epiano', density: 0.48, swing: 0.12, volume: 0.56, seed: 29, shaker: 'soft' },
+  // Snail Race: quick and cheerful
+  race: { bpm: 132, root: 62, prog: [I, IV, V, IV], lead: 'marimba', comp: 'epiano', density: 0.62, swing: 0.06, volume: 0.6, seed: 31, shaker: true, walk: true },
+  // Bug Hotel: cosy thinking music
+  hotel: { bpm: 84, root: 60, prog: [vi, ii, V, I], lead: 'bell', comp: 'epiano', density: 0.3, swing: 0.14, volume: 0.52, seed: 43 },
+  // Rain Rhythm brings its own music, so everything else goes quiet
+  silent: { silent: true, bpm: 60, root: 60, prog: [I], lead: 'bell', comp: 'pad', density: 0, swing: 0, volume: 0, seed: 1 },
   // Breathe: only a slow pad and the odd bell
   breathe: { bpm: 46, root: 57, prog: [vi, IV, I, V], lead: 'bell', comp: 'pad', density: 0.06, swing: 0, volume: 0.65, seed: 2, noBass: true },
   // Flower Song: a quiet bed so the player's notes stand out
@@ -82,6 +92,7 @@ function buildMelody(track) {
 }
 
 function scheduleStep(track, time) {
+  if (track.silent) return
   const out = buses().music
   const stepLen = 60 / track.bpm / 2
   const bar = Math.floor(step / STEPS)

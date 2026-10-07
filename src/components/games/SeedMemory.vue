@@ -71,7 +71,9 @@ function shuffle(list) {
 // ---- flow ----
 function pick(n) {
   level.value = n
-  phase.value = 'intro'
+  // the how-to card only shows the first time; after that, straight to the countdown
+  if (pip.introSeen.memory) begin()
+  else phase.value = 'intro'
 }
 
 function pickFaces() {
@@ -102,6 +104,7 @@ function deal() {
 }
 
 function begin() {
+  pip.markIntroSeen('memory')
   deal()
   phase.value = 'countdown'
 }
@@ -222,6 +225,7 @@ onBeforeUnmount(() => clearInterval(timer))
       :celebrate="justUnlocked"
       heading="Seed Memory"
       @select="pick"
+      @help="phase = 'intro'"
       @celebrated="justUnlocked = null"
     />
 
@@ -313,7 +317,7 @@ onBeforeUnmount(() => clearInterval(timer))
         @start="begin"
         @levels="phase = 'levels'"
       />
-      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" @done="start" />
+      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" :goal="`Find ${cfg.pairs} pairs in ${cfg.time} seconds`" @done="start" />
 
       <GameResults
         v-if="phase === 'done' && results"

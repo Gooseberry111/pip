@@ -51,12 +51,18 @@ async function focusName() {
 
 const mode = remindersMode()
 const permissionNote = ref('')
+const permissionDetail = ref('')
 const working = ref(false)
 
 const REASONS = {
   denied: 'Notifications are turned off for Pip. You can allow them in your phone’s settings.',
   install: 'On iPhone, add Pip to your Home Screen first (Share, then Add to Home Screen), and open it from there.',
   unsupported: 'This browser can’t show reminders. Try Chrome on Android, or Pip on your iPhone Home Screen.',
+  offline: 'Couldn’t reach Pip’s reminder service. Check your connection and try again.',
+  functions: 'The reminder service isn’t on this site yet. Make sure the netlify folder is pushed and the site has redeployed.',
+  keys: 'The reminder keys aren’t set up on Netlify yet. Add the VAPID keys, then redeploy the site.',
+  subscribe: 'Your phone couldn’t sign up for reminders. Try again, or reopen Pip from the Home Screen.',
+  save: 'The reminder service couldn’t save your settings. Please try again in a moment.',
   server: 'Couldn’t reach Pip’s reminder service just now. Please try again in a moment.',
 }
 const TIMES = [
@@ -69,6 +75,7 @@ const TIMES = [
 async function toggleReminders() {
   if (working.value) return
   permissionNote.value = ''
+  permissionDetail.value = ''
   if (pip.remindersOn) {
     pip.setReminders(false)
     await disableReminders()
@@ -79,6 +86,7 @@ async function toggleReminders() {
   working.value = false
   if (!result.ok) {
     permissionNote.value = REASONS[result.reason] ?? REASONS.server
+    permissionDetail.value = result.detail || ''
     return
   }
   pip.setReminders(true)
@@ -181,7 +189,10 @@ const ROWS = [
                 Quiet between 10pm and 8am. No hello if you’ve already visited that day.
               </p>
             </div>
-            <p v-if="permissionNote" class="px-4 py-3 text-xs font-semibold text-clay-400">{{ permissionNote }}</p>
+            <div v-if="permissionNote" class="px-4 py-3">
+              <p class="text-xs font-semibold text-clay-400">{{ permissionNote }}</p>
+              <p v-if="permissionDetail" class="mt-1 break-words font-mono text-[0.6875rem] text-bark-400">{{ permissionDetail }}</p>
+            </div>
             <p v-else-if="!pip.remindersOn && mode === 'install'" class="px-4 py-3 text-xs font-semibold text-bark-400">
               To get reminders on iPhone, add Pip to your Home Screen first.
             </p>

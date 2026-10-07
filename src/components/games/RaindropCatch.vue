@@ -86,10 +86,13 @@ function rim() {
 // ---- flow ----
 function pick(n) {
   level.value = n
-  phase.value = 'intro'
+  // the how-to card only shows the first time; after that, straight to the countdown
+  if (pip.introSeen.rain) begin()
+  else phase.value = 'intro'
 }
 
 function begin() {
+  pip.markIntroSeen('rain')
   phase.value = 'countdown'
   nextTick(resize)
 }
@@ -396,6 +399,7 @@ onBeforeUnmount(() => {
       :celebrate="justUnlocked"
       heading="Raindrop Catch"
       @select="pick"
+      @help="phase = 'intro'"
       @celebrated="justUnlocked = null"
     />
 
@@ -472,7 +476,7 @@ onBeforeUnmount(() => {
         @start="begin"
         @levels="phase = 'levels'"
       />
-      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" @done="start" />
+      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" :goal="rainGoalText(cfg.goal)" @done="start" />
 
       <GameResults
         v-if="phase === 'done' && results"

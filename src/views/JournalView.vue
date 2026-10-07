@@ -1,10 +1,11 @@
 <script setup>
 // Pip's journal: a little scrapbook of moments, saved automatically as you go.
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { ITEMS } from '@/data/items'
 import { findMood } from '@/data/moods'
+import { FACTS, findFact } from '@/data/facts'
 import { daysTogether } from '@/utils/timeOfDay'
 import Pip from '@/components/Pip.vue'
 import MoodFace from '@/components/MoodFace.vue'
@@ -18,7 +19,10 @@ const days = computed(() => daysTogether(pip.startedAt))
 const collected = computed(() =>
   Object.keys(ITEMS).reduce((n, c) => n + ITEMS[c].filter((i) => pip.isUnlocked(c, i.id)).length, 0),
 )
-const stars = computed(() => ['rain', 'memory', 'firefly', 'glide', 'puzzle'].reduce((n, g) => n + pip.totalStars(g), 0))
+const stars = computed(() => ['rain', 'memory', 'firefly', 'glide', 'puzzle', 'burst', 'race', 'rhythm', 'hotel', 'pop', 'words', 'search'].reduce((n, g) => n + pip.totalStars(g), 0))
+const factBook = computed(() => [...pip.factsSeen].reverse().map(findFact).filter(Boolean))
+const showAllFacts = ref(false)
+
 const moods = computed(() => pip.journal.filter((e) => e.type === 'mood').slice(0, 14).reverse())
 
 const groups = computed(() => {
@@ -75,6 +79,23 @@ function back() {
           <span class="text-[0.625rem] font-bold text-bark-400">{{ new Date(m.at).toLocaleDateString(undefined, { weekday: 'short' }) }}</span>
         </div>
       </div>
+    </div>
+
+    <!-- fact book -->
+    <div v-if="factBook.length" class="card mt-3 px-4 py-3.5">
+      <div class="flex items-baseline justify-between">
+        <p class="eyebrow">Fact book</p>
+        <span class="text-xs font-bold text-bark-400">{{ factBook.length }} of {{ FACTS.length }}</span>
+      </div>
+      <ul class="mt-2 divide-y divide-line">
+        <li v-for="f in showAllFacts ? factBook : factBook.slice(0, 3)" :key="f.id" class="py-2.5">
+          <p class="text-[0.6875rem] font-bold uppercase tracking-wider text-clay-400">{{ f.topic }}</p>
+          <p class="mt-0.5 text-sm font-medium text-bark-600">{{ f.text }}</p>
+        </li>
+      </ul>
+      <button v-if="factBook.length > 3" type="button" class="btn btn-ghost btn-sm mt-1 w-full" @click="showAllFacts = !showAllFacts">
+        {{ showAllFacts ? 'Show fewer' : `Show all ${factBook.length}` }}
+      </button>
     </div>
 
     <!-- the scrapbook -->

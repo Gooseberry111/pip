@@ -7,9 +7,35 @@ export const HOUR = 60 * 60 * 1000
 
 export const WATER = {
   max: 100,
-  pour: 35, // added per watering
+  pour: 45, // added per watering: one or two pours fill Pip up
   fullAbove: 92, // Pip politely declines water above this
-  decayPerHour: 100 / 36, // a full Pip empties in ~1.5 days
+  decayPerHour: 100 / 16, // awake, a full Pip gets thirsty again in about 7 hours
+  sleepFactor: 0.35, // asleep at night, Pip drinks much more slowly
+}
+
+// Pip wants a drink in the morning, the afternoon and at night.
+export const DRINK_SLOTS = [
+  { id: 'morning', label: 'Morning', from: 5, to: 12 },
+  { id: 'afternoon', label: 'Afternoon', from: 12, to: 18 },
+  { id: 'night', label: 'Night', from: 18, to: 29 }, // 18:00 until 5am the next day
+]
+export const DRINK_REWARD = { petals: 2, growth: 10 }
+export const PERFECT_DAY = { petals: 5, growth: 15 }
+
+/** Pip sleeps from 10pm to 7am. */
+export function isAsleep(date = new Date()) {
+  const h = date.getHours()
+  return h >= 22 || h < 7
+}
+
+/** Which drink time it is, and which day that belongs to (late night counts as the evening before). */
+export function drinkSlot(date = new Date()) {
+  const h = date.getHours()
+  const day = new Date(date)
+  if (h < 5) day.setDate(day.getDate() - 1)
+  const key = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`
+  const slot = h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'afternoon' : 'night'
+  return { day: key, slot }
 }
 
 export const HEALTH = {
@@ -102,9 +128,18 @@ export function getStagePercent(level, progress) {
   return Math.floor(((level - stage.fromLevel + levelFraction) / (next.fromLevel - stage.fromLevel)) * 100)
 }
 
-/** Hours until Pip gets thirsty from a given water level (0 if already thirsty). */
-export function hoursUntilThirsty(waterLevel) {
-  return Math.max(0, (waterLevel - THIRSTY_BELOW) / WATER.decayPerHour)
+const decayAt = (ms) => WATER.decayPerHour * (isAsleep(new Date(ms)) ? WATER.sleepFactor : 1)
+
+/** Hours until Pip gets thirsty from a given water level (0 if already thirsty), counting sleep. */
+export function hoursUntilThirsty(waterLevel, from = Date.now()) {
+  let water = waterLevel
+  let hours = 0
+  const step = 0.25
+  while (water >= THIRSTY_BELOW && hours < 48) {
+    water -= decayAt(from + hours * HOUR) * step
+    hours += step
+  }
+  return water >= THIRSTY_BELOW ? 48 : Math.max(0, hours - step)
 }
 
 /** Pour water. Returns the new water level and how much Pip actually drank. */
@@ -136,15 +171,17 @@ export function applyGrowth(level, progress, gain) {
  * Let time pass. Water evaporates and Pip grows a little on its own while it has water.
  * Simulated in small steps so growth slows naturally as Pip gets thirsty.
  */
-export function simulateTime(waterLevel, elapsedMs) {
+export function simulateTime(waterLevel, elapsedMs, endMs = Date.now()) {
   let hours = clamp(elapsedMs / HOUR, 0, GROWTH.maxSimulatedHours)
+  let t = endMs - hours * HOUR
   let water = waterLevel
   let growthGain = 0
   while (hours > 0) {
     const step = Math.min(GROWTH.simulationStepHours, hours)
     growthGain += GROWTH.passivePerHour[getHealth(water)] * step
-    water = Math.max(0, water - WATER.decayPerHour * step)
+    water = Math.max(0, water - decayAt(t) * step)
     hours -= step
+    t += step * HOUR
   }
   return { waterLevel: water, growthGain }
 }

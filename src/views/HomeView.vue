@@ -2,6 +2,10 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
+import { useFarmStore } from '@/stores/farm'
+import { DRINK_SLOTS } from '@/utils/plantLogic'
+import { GOODS } from '@/data/farm'
+import GoodIcon from '@/components/farm/GoodIcon.vue'
 import { getDayPhase, getGreeting, daysTogether } from '@/utils/timeOfDay'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
@@ -40,8 +44,11 @@ import DecorationArt from '@/components/art/DecorationArt.vue'
 import Icon from '@/components/Icon.vue'
 import SettingsSheet from '@/components/SettingsSheet.vue'
 import MoodCheckin from '@/components/MoodCheckin.vue'
+import FactCard from '@/components/FactCard.vue'
+import ChatSheet from '@/components/ChatSheet.vue'
 
 const pip = usePipStore()
+const farm = useFarmStore()
 
 const pipRef = ref(null)
 const floaters = ref(null)
@@ -69,6 +76,34 @@ function closeSettings() {
   if (window.history.state?.back) router.back()
   else router.replace({ query: {} })
 }
+
+// Talking to Pip also lives in the page history, so back returns here.
+const chatOpen = computed(() => route.query.chat === '1')
+const chatPrefill = ref('')
+
+function openChat(prefill = '') {
+  chatPrefill.value = prefill
+  router.push({ query: { ...route.query, chat: '1' } })
+}
+
+function closeChat() {
+  chatPrefill.value = ''
+  if (window.history.state?.back) router.back()
+  else router.replace({ query: {} })
+}
+
+// Did you know? A new fact every few hours.
+const shownFact = ref(null)
+
+function openFact() {
+  shownFact.value = pip.readFact()
+  haptic('light')
+}
+
+function askAboutFact(fact) {
+  shownFact.value = null
+  setTimeout(() => openChat(`I just learned: “${fact.text}” Tell me more!`), 250)
+}
 const checkinOpen = ref(false)
 
 const timers = new Set()
@@ -81,11 +116,55 @@ function later(fn, ms) {
   return id
 }
 
+// ---- night: Pip sleeps from 10pm to 7am, and wakes for a little while when you tap ----
+const nightAwake = ref(false)
+let nightTimer = null
+const asleepNow = computed(() => sleeping.value || (pip.asleep && !nightAwake.value))
+
+function wakeForNight() {
+  if (!pip.asleep || nightAwake.value) return false
+  nightAwake.value = true
+  clearTimeout(nightTimer)
+  nightTimer = later(() => (nightAwake.value = false), 45000)
+  pipRef.value?.react('stretch')
+  say('Mmm? Oh, hello. It’s sleepy time, but I’m glad you’re here.', 4500)
+  return true
+}
+
+const DRINK_THANKS = {
+  morning: 'A fresh morning drink. Thank you!',
+  afternoon: 'Just what I needed this afternoon.',
+  night: 'A cosy drink before bed. Thank you!',
+}
+const DRINK_ICONS = { morning: '🌅', afternoon: '☀️', night: '🌙' }
+const drinkLabel = computed(() =>
+  DRINK_SLOTS.map((s) => `${s.label}: ${pip.drinksToday[s.id] ? 'had a drink' : 'not yet'}`).join(', '),
+)
+
+// ---- Pip's wish from the farm ----
+const wish = computed(() => (farm.wish && !farm.wish.done ? farm.wish.good : null))
+const wishInBarn = computed(() => wish.value && (farm.state.barn[wish.value] ?? 0) > 0)
+
+function grantWish() {
+  onActivity()
+  if (!wishInBarn.value) {
+    say(`I’d love a ${GOODS[wish.value].name.toLowerCase()}. Could you grow one on the farm?`, 4500)
+    return
+  }
+  const r = farm.feedPip(wish.value)
+  if (!r) return
+  pipRef.value?.react('happy')
+  haptic('success')
+  sparkling.value = true
+  later(() => (sparkling.value = false), 1600)
+  say('My wish came true! You’re the best.', 5000)
+  later(() => showPetals(8), 500)
+}
+
 // ---- words ----
 const greeting = computed(() => getGreeting())
 const headline = computed(() => STATUS_HEADLINES[pip.health].replace('Pip', pip.plantName))
 const days = computed(() => daysTogether(pip.startedAt))
-const drops = computed(() => Math.ceil(pip.waterLevel / 20))
 const sound = (name, opts) => playSound(name, pip.soundOn, opts)
 
 let settleTimer = null
@@ -149,6 +228,11 @@ function water() {
   if (busy.value) return
   onActivity()
   wake()
+  if (pip.asleep) {
+    nightAwake.value = true
+    clearTimeout(nightTimer)
+    nightTimer = later(() => (nightAwake.value = false), 45000)
+  }
   pip.catchUp()
   haptic('light')
 
@@ -169,8 +253,15 @@ function water() {
     pipRef.value?.react('happy')
     haptic('soft')
     const recovering = result.wasHealth === 'wilting' || result.health === 'wilting'
-    say(pick(recovering ? RECOVERING_MESSAGES : WATERED_MESSAGES))
-    later(() => showPetals(result.reward), 500)
+    const drink = result.drink
+    if (drink?.perfect) say('Morning, afternoon and night. A perfect day of drinks!', 6000)
+    else if (drink) say(DRINK_THANKS[drink.slot])
+    else say(pick(recovering ? RECOVERING_MESSAGES : WATERED_MESSAGES))
+    later(() => showPetals((result.reward ?? 0) + (drink?.petals ?? 0)), 500)
+    if (drink?.perfect) {
+      sparkling.value = true
+      later(() => (sparkling.value = false), 1800)
+    }
     if (result.leveledUp) later(() => celebrate(result), 1400)
     else later(() => (busy.value = false), 900)
   }, 1050)
@@ -220,6 +311,7 @@ function openGift() {
 // ---- tapping and petting Pip ----
 function onTapPip() {
   onActivity()
+  if (wakeForNight()) return
   if (wake()) return
   if (busy.value) return
   sound('boop')
@@ -356,27 +448,42 @@ onBeforeUnmount(() => {
         <h1 :key="headline" class="title-xl mt-1 text-[1.7rem]!">{{ headline }}</h1>
       </Transition>
       <div class="mt-2.5 flex flex-wrap items-center gap-2">
-        <span class="chip border-leaf-300! bg-leaf-200/60! text-leaf-500!" :aria-label="`Level ${pip.growthLevel}, ${pip.stage.name}`">
+        <span class="chip border-leaf-300! bg-leaf-200/60! text-leaf-500!" :aria-label="`Level ${pip.growthLevel}, ${pip.stage.name.replace('Pip', pip.plantName)}`">
           <svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M10 18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             <path d="M10 10C8 5 3 4 2 6c2 4 6 5 8 4Z M10 9c2-5 7-6 8-4-2 4-6 5-8 4Z" fill="currentColor" />
           </svg>
-          Level {{ pip.growthLevel }} · {{ pip.stage.name }}
+          Level {{ pip.growthLevel }} · {{ pip.stage.name.replace('Pip', pip.plantName) }}
         </span>
         <span class="chip">
           <Icon name="heart" :size="13" :stroke="2.2" class="text-petal-400" />
           Day {{ days }}
         </span>
-        <span class="chip gap-0.5!" :aria-label="`Water ${Math.round(pip.waterLevel)} percent`">
-          <svg v-for="i in 5" :key="i" width="11" height="13" viewBox="0 0 12 14" aria-hidden="true">
-            <path
-              d="M6 1C8 3.8 10.5 6.4 10.5 9A4.5 4.5 0 0 1 1.5 9C1.5 6.4 4 3.8 6 1Z"
-              :fill="i <= drops ? '#6FA3B8' : 'none'"
-              :stroke="i <= drops ? '#6FA3B8' : '#D8C9B5'"
-              stroke-width="1.4"
-            />
-          </svg>
+        <button
+          v-if="pip.factWaiting"
+          type="button"
+          class="fact-chip chip border-honey-400/40! bg-honey-100! text-clay-400!"
+          data-sound="select"
+          @click="openFact"
+        >
+          <Icon name="sparkle" :size="13" :stroke="2.2" />
+          Did you know?
+          <span class="h-1.5 w-1.5 rounded-full bg-clay-300" />
+        </button>
+        <span class="chip gap-1! pl-2!" :aria-label="`Drinks today. ${drinkLabel}`">
+          <span
+            v-for="s in DRINK_SLOTS"
+            :key="s.id"
+            class="drink relative flex h-5 w-5 items-center justify-center rounded-full text-[0.7rem] leading-none"
+            :class="{ 'is-done': pip.drinksToday[s.id], 'is-now': pip.slotNow.slot === s.id && !pip.drinksToday[s.id] }"
+          >
+            {{ DRINK_ICONS[s.id] }}
+            <span v-if="pip.drinksToday[s.id]" class="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-water-400 text-[0.4rem] text-white">✓</span>
+          </span>
         </span>
+        <RouterLink v-if="farm.readyCount" to="/farm" class="chip border-leaf-300! bg-surface! text-leaf-500!">
+          🧺 {{ farm.readyCount }} ready on the farm
+        </RouterLink>
       </div>
     </header>
 
@@ -431,7 +538,7 @@ onBeforeUnmount(() => {
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
-          :sleeping="sleeping"
+          :sleeping="asleepNow"
           :wet="wet"
           class="h-full w-full"
           @tap="onTapPip"
@@ -441,6 +548,29 @@ onBeforeUnmount(() => {
         <Sparkles :active="sparkling" />
         <Floaters ref="floaters" />
       </div>
+
+      <!-- Pip's wish -->
+      <button
+        v-if="wish"
+        type="button"
+        class="wish absolute bottom-[3.5%] left-3 z-20 inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface/95 pl-1.5 pr-3.5 text-[0.8125rem] font-bold text-bark-600 shadow-soft backdrop-blur"
+        :class="{ 'is-ready': wishInBarn }"
+        data-sound="none"
+        @click="grantWish"
+      >
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-honey-100"><GoodIcon :id="wish" :size="20" /></span>
+        {{ wishInBarn ? 'Give the wish' : 'A wish' }}
+      </button>
+
+      <!-- talk to Pip -->
+      <button
+        type="button"
+        class="talk absolute bottom-[3.5%] right-3 z-20 inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface/95 px-3.5 text-[0.8125rem] font-bold text-bark-600 shadow-soft backdrop-blur"
+        @click="openChat()"
+      >
+        <Icon name="chat" :size="17" :stroke="2" class="text-leaf-500" />
+        Talk to {{ pip.plantName }}
+      </button>
     </HomeStage>
 
     <!-- care -->
@@ -464,12 +594,39 @@ onBeforeUnmount(() => {
     <LevelUpMoment :moment="levelUp" @close="closeLevelUp" />
     <SettingsSheet :open="settingsOpen" @close="closeSettings" />
     <MoodCheckin :open="checkinOpen" @close="closeCheckin" />
+    <FactCard :fact="shownFact" @close="shownFact = null" @ask="askAboutFact" />
+    <ChatSheet :open="chatOpen" :prefill="chatPrefill" @close="closeChat" />
   </section>
 </template>
 
 <style scoped>
 .butterfly {
   animation: flutter-path 10s ease-in-out infinite;
+}
+.drink {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.drink.is-done {
+  filter: none;
+  opacity: 1;
+}
+.drink.is-now {
+  filter: none;
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgb(111 163 184 / 0.55);
+  animation: chip-glow 2.6s ease-in-out infinite;
+}
+.wish.is-ready {
+  animation: chip-glow 2.2s ease-in-out infinite;
+  border-color: var(--color-honey-400);
+}
+.fact-chip {
+  animation: chip-glow 2.6s ease-in-out infinite;
+}
+@keyframes chip-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(233 181 79 / 0.35); }
+  50% { box-shadow: 0 0 0 5px rgb(233 181 79 / 0); }
 }
 @keyframes flutter-path {
   0%, 100% { transform: translate(0, 0) rotate(-4deg); }

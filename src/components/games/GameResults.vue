@@ -20,6 +20,7 @@ const props = defineProps({
   best: { type: Boolean, default: false },
   hasNext: { type: Boolean, default: false },
   hasLevels: { type: Boolean, default: false },
+  levelsLabel: { type: String, default: 'Levels' },
   unlocked: { type: Number, default: null }, // a level this finish just opened
   allDone: { type: Boolean, default: false }, // the very last level, cleared for the first time
 })
@@ -115,7 +116,7 @@ onBeforeUnmount(() => clearTimeout(timer))
           {{ success ? 'Play again' : 'Try again' }}
         </button>
         <div class="mt-1 flex gap-1.5">
-          <button v-if="hasLevels" type="button" class="btn btn-ghost btn-sm flex-1" @click="emit('levels')">Levels</button>
+          <button v-if="hasLevels" type="button" class="btn btn-ghost btn-sm flex-1" @click="emit('levels')">{{ levelsLabel }}</button>
           <button type="button" class="btn btn-ghost btn-sm flex-1" @click="emit('close')">Back to Pip</button>
         </div>
       </div>

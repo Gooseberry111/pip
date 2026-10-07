@@ -20,6 +20,7 @@ function perc(gain, t, peak, attack, decay) {
 }
 
 function partial(ac, out, { freq, t, vol, attack = 0.004, decay, type = 'sine', endFreq, detune = 0 }) {
+  if (freq > 18000) return // overtones of very high notes: too high to hear anyway
   const osc = ac.createOscillator()
   const g = ac.createGain()
   osc.type = type

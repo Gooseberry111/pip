@@ -119,6 +119,60 @@ const sounds = {
     ;[88, 91, 96].forEach((m, i) => bell(out, f(m), t + 0.42 + i * 0.06, { vol: 0.03, decay: 2 }))
     bass(out, f(48), t + 0.36, { vol: 0.1, decay: 1.4 })
   },
+  // ---- new games ----
+  // a piece set down on the board (Tac Toe): sprouts low, blossoms high
+  place(out, t, { high = false } = {}) {
+    tok(out, t, { pitch: high ? 1.25 : 0.9, vol: 0.06 })
+    kalimba(out, f(high ? 79 : 72), t + 0.01, { vol: 0.05, decay: 0.6 })
+  },
+  // two tiles trading places
+  swap(out, t) {
+    rustle(out, t, { vol: 0.03, decay: 0.08, from: 2200, to: 1400 })
+    tok(out, t + 0.03, { pitch: 1.1, vol: 0.03 })
+  },
+  // a match clearing: climbs with each cascade
+  burst(out, t, { chain = 0 } = {}) {
+    const scale = [72, 76, 79, 84, 88, 91, 96]
+    const m = scale[Math.min(chain, scale.length - 1)]
+    kalimba(out, f(m), t, { vol: 0.055, decay: 0.7 })
+    for (let i = 0; i < 3; i++) bubble(out, t + i * 0.03, { freq: 500 + Math.random() * 500, vol: 0.02, rise: 2 })
+  },
+  // a special going off: a sweep and a bell
+  special(out, t) {
+    rustle(out, t, { vol: 0.06, decay: 0.3, from: 900, to: 3200 })
+    ;[84, 88, 91, 96].forEach((m, i) => bell(out, f(m), t + i * 0.04, { vol: 0.025, decay: 1.2 }))
+    bass(out, f(48), t, { vol: 0.07, decay: 0.6 })
+  },
+  // launching a petal
+  shoot(out, t) {
+    rustle(out, t, { vol: 0.04, decay: 0.1, from: 1400, to: 2600 })
+  },
+  bounce(out, t) {
+    tok(out, t, { pitch: 1.6, vol: 0.035 })
+  },
+  // petals popping: more petals, more bubbles
+  pop(out, t, { count = 3 } = {}) {
+    const n = Math.min(8, count)
+    for (let i = 0; i < n; i++) bubble(out, t + i * 0.035, { freq: 420 + i * 70, vol: 0.035, rise: 2.4 })
+    kalimba(out, f(84 + Math.min(12, count)), t, { vol: 0.03, decay: 0.6 })
+  },
+  // a snail step
+  step(out, t, { pitch = 1 } = {}) {
+    tok(out, t, { pitch: 0.8 * pitch, vol: 0.035 })
+  },
+  // a snail nodding off
+  snore(out, t) {
+    bass(out, f(40), t, { vol: 0.08, decay: 0.7 })
+    breath(out, t, { rising: false, length: 1.2, vol: 0.03 })
+  },
+  // a bug hopping to another tower
+  hop(out, t, { count = 1 } = {}) {
+    for (let i = 0; i < Math.min(5, count); i++) bubble(out, t + i * 0.05, { freq: 300 + i * 60, vol: 0.04, rise: 2.8, decay: 0.1 })
+  },
+  // a tower full of one kind of bug
+  done(out, t) {
+    ;[79, 84, 88].forEach((m, i) => kalimba(out, f(m), t + i * 0.06, { vol: 0.05, decay: 0.9 }))
+  },
   // a lock popping open
   unlockPop(out, t) {
     bubble(out, t, { freq: 320, vol: 0.06, rise: 3, decay: 0.12 })

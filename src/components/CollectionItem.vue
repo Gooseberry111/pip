@@ -28,13 +28,14 @@ const TINTS = {
 
 // How close Pip is to unlocking this, counting the progress through the current level.
 const closeness = computed(() => {
-  if (props.unlocked || props.item.packet) return 1
+  if (props.unlocked || props.item.packet || props.item.shop) return 1
   const done = props.currentLevel - 1 + props.levelPercent / 100
   return Math.min(0.97, Math.max(0.05, done / (props.item.level - 1)))
 })
 
 const hint = computed(() => {
   if (props.item.packet) return 'Found in seed packets'
+  if (props.item.shop) return `In the shop · ${props.item.shop} petals`
   const away = props.item.level - props.currentLevel
   return away === 1 ? 'Almost there' : `Grows at level ${props.item.level}`
 })

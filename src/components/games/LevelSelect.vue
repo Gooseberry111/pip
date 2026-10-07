@@ -15,7 +15,7 @@ const props = defineProps({
   celebrate: { type: Number, default: null }, // a newly unlocked level to open with a flourish
 })
 
-const emit = defineEmits(['select', 'celebrated'])
+const emit = defineEmits(['select', 'celebrated', 'help'])
 
 // The new tile starts locked, then the lock wiggles and pops off.
 const opening = ref(props.celebrate) // level still showing its lock
@@ -58,26 +58,43 @@ onMounted(() => {
 
 onBeforeUnmount(() => timers.forEach(clearTimeout))
 
+// the second half of every game is marked Hard, the last few Expert
+function tier(i) {
+  const n = props.levels.length
+  if (i >= n - Math.max(3, Math.round(n * 0.2))) return 'Expert'
+  if (i >= Math.floor(n / 2)) return 'Hard'
+  return ''
+}
+
 const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) => a + b, 0))
 </script>
 
 <template>
   <div class="flex flex-1 flex-col overflow-y-auto px-5 pb-10 pt-3">
-    <div class="flex items-end justify-between">
-      <div>
+    <div class="flex items-end justify-between gap-3">
+      <div class="min-w-0">
         <p class="eyebrow" :class="{ '!text-white/55': dark }">Levels</p>
-        <h2 class="font-display text-2xl font-semibold" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">{{ heading }}</h2>
+        <h2 class="truncate font-display text-2xl font-semibold" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">{{ heading }}</h2>
       </div>
       <span
-        class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-extrabold tabular-nums"
+        class="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-sm font-extrabold tabular-nums"
         :class="dark ? 'bg-white/10 text-[#F6EFE2]' : 'bg-honey-100 text-bark-600'"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.5-4.2 6.1-.8z" fill="#EDB64C" /></svg>
         {{ earned }} / {{ levels.length * 3 }}
       </span>
     </div>
+    <button
+      type="button"
+      class="mt-2 inline-flex h-8 items-center gap-1.5 self-start rounded-full px-3 text-xs font-bold transition"
+      :class="dark ? 'bg-white/10 text-[#F6EFE2] hover:bg-white/15' : 'border border-line bg-surface text-bark-500 hover:bg-sand-100'"
+      @click="emit('help')"
+    >
+      <span class="flex h-4 w-4 items-center justify-center rounded-full text-[0.625rem] font-extrabold" :class="dark ? 'bg-white/20' : 'bg-sand-200'">?</span>
+      How to play
+    </button>
 
-    <div class="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div class="relative mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Celebration :trigger="burst" :x="burstAt.x" :y="burstAt.y" :count="20" :spread="120" />
       <button
         v-for="(level, i) in levels"
@@ -97,11 +114,20 @@ const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) 
         ]"
         :disabled="isLocked(i + 1)"
         :aria-label="`Level ${i + 1}. ${level.goal}`"
-        :style="{ animationDelay: `${i * 40}ms` }"
+        :style="{ animationDelay: `${Math.min(i, 12) * 40}ms` }"
         @click="emit('select', i + 1)"
       >
         <div class="flex items-start justify-between">
-          <span class="font-display text-3xl font-semibold leading-none" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">{{ i + 1 }}</span>
+          <span class="flex items-center gap-1.5">
+            <span class="font-display text-3xl font-semibold leading-none" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">{{ i + 1 }}</span>
+            <span
+              v-if="tier(i)"
+              class="rounded-full px-1.5 py-0.5 text-[0.5625rem] font-extrabold uppercase tracking-wider"
+              :class="tier(i) === 'Expert' ? 'bg-clay-100 text-clay-400' : dark ? 'bg-white/10 text-white/70' : 'bg-honey-100 text-bark-500'"
+            >
+              {{ tier(i) }}
+            </span>
+          </span>
           <Icon
             v-if="isLocked(i + 1)"
             name="lock"

@@ -3,9 +3,10 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { playSound } from '@/utils/sound'
 
-defineProps({
+const props = defineProps({
   dark: { type: Boolean, default: false },
   label: { type: String, default: '' },
+  goal: { type: String, default: '' },
 })
 
 const emit = defineEmits(['done'])
@@ -25,7 +26,8 @@ onMounted(() => {
       timer = setTimeout(() => emit('done'), 380)
     }
   }
-  timer = setTimeout(step, 650)
+  // a beat longer on the first number when there's a goal to read
+  timer = setTimeout(step, props.goal ? 1100 : 650)
 })
 
 onBeforeUnmount(() => clearTimeout(timer))
@@ -33,7 +35,10 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <div class="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center">
-    <p v-if="label" class="eyebrow mb-1" :class="{ 'text-white/60!': dark }">{{ label }}</p>
+    <div v-if="label || goal" class="intro-line mb-2 text-center">
+      <p v-if="label" class="eyebrow" :class="{ 'text-white/60!': dark }">{{ label }}</p>
+      <p v-if="goal" class="mt-1 px-6 font-display text-xl font-semibold" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">{{ goal }}</p>
+    </div>
     <span :key="n" class="count font-display text-8xl font-semibold" :class="dark ? 'text-[#F6EFE2]' : 'text-bark-600'">
       {{ n || 'Go!' }}
     </span>
@@ -41,6 +46,13 @@ onBeforeUnmount(() => clearTimeout(timer))
 </template>
 
 <style scoped>
+.intro-line {
+  animation: intro-in 0.4s ease-out both;
+}
+@keyframes intro-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
 .count {
   animation: count 0.65s ease-out both;
 }

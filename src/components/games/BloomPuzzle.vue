@@ -83,10 +83,13 @@ function scramble() {
 function pick(lvl) {
   level.value = lvl
   tiles.value = scramble()
-  phase.value = 'intro'
+  // the how-to card only shows the first time; after that, straight to the countdown
+  if (pip.introSeen.puzzle) begin()
+  else phase.value = 'intro'
 }
 
 function begin() {
+  pip.markIntroSeen('puzzle')
   tiles.value = scramble()
   moves.value = 0
   peeksUsed.value = 0
@@ -213,6 +216,7 @@ onBeforeUnmount(() => clearInterval(timer))
       :celebrate="justUnlocked"
       heading="Bloom Puzzle"
       @select="pick"
+      @help="phase = 'intro'"
       @celebrated="justUnlocked = null"
     />
 
@@ -306,7 +310,7 @@ onBeforeUnmount(() => clearInterval(timer))
         @start="begin"
         @levels="phase = 'levels'"
       />
-      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" @done="start" />
+      <Countdown v-if="phase === 'countdown'" :label="`Level ${level}`" :goal="`Rebuild the picture in ${formatTime(cfg.time)}`" @done="start" />
 
       <GameResults
         v-if="phase === 'done' && results"

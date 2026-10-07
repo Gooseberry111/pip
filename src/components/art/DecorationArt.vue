@@ -117,6 +117,41 @@ watch(
       </g>
     </g>
 
+    <g v-else-if="decoration === 'frog'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="14" ry="2.2" fill="#4A3426" opacity="0.1" />
+      <ellipse cx="0" cy="-8" rx="12" ry="8.5" fill="#8CC27A" />
+      <ellipse cx="-8" cy="-2" rx="5" ry="2.6" fill="#7AAE68" />
+      <ellipse cx="8" cy="-2" rx="5" ry="2.6" fill="#7AAE68" />
+      <ellipse cx="0" cy="-6" rx="7" ry="4.5" fill="#D8EDCD" />
+      <circle cx="-6" cy="-16" r="4.6" fill="#8CC27A" /><circle cx="6" cy="-16" r="4.6" fill="#8CC27A" />
+      <circle cx="-6" cy="-16.5" r="2.6" fill="#fff" /><circle cx="6" cy="-16.5" r="2.6" fill="#fff" />
+      <circle cx="-5.6" cy="-16.3" r="1.4" fill="#47352A" /><circle cx="6.4" cy="-16.3" r="1.4" fill="#47352A" />
+      <path d="M-4 -10 Q0 -7.5 4 -10" stroke="#47352A" stroke-width="1.1" fill="none" stroke-linecap="round" />
+      <ellipse cx="-8" cy="-11" rx="1.8" ry="1" fill="#F1C4C0" opacity="0.7" /><ellipse cx="8" cy="-11" rx="1.8" ry="1" fill="#F1C4C0" opacity="0.7" />
+    </g>
+
+    <g v-else-if="decoration === 'birdhouse'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="10" ry="2" fill="#4A3426" opacity="0.1" />
+      <rect x="-1.6" y="-14" width="3.2" height="14" fill="#9C7351" />
+      <rect x="-10" y="-34" width="20" height="20" rx="2" fill="#F3C98B" />
+      <path d="M-13 -33 L0 -45 L13 -33Z" fill="#C9584A" />
+      <circle cx="0" cy="-26" r="3.6" fill="#5B3F2B" />
+      <rect x="-3.5" y="-20" width="7" height="1.6" rx="0.8" fill="#9C7351" />
+      <g transform="translate(9 -45)">
+        <ellipse rx="4" ry="3" fill="#7CB3D6" /><circle cx="3" cy="-2" r="2.2" fill="#7CB3D6" />
+        <path d="M5 -2 L7 -1.5 L5 -1Z" fill="#F2B544" /><circle cx="3.6" cy="-2.4" r="0.6" fill="#47352A" />
+      </g>
+    </g>
+
+    <g v-else-if="decoration === 'fairylights'" class="deco-body">
+      <path d="M-24 -30 Q-12 -18 0 -26 Q12 -34 24 -22" stroke="#7D6B5B" stroke-width="1" fill="none" />
+      <g v-for="(b, i) in [[-20, -26, '#F8DE92'], [-12, -21, '#F6C7CD'], [-4, -23, '#CFE5F1'], [4, -28, '#F8DE92'], [12, -29, '#D8EDCD'], [20, -25, '#F6C7CD']]" :key="i">
+        <circle :cx="b[0]" :cy="b[1] + 3" r="5" :fill="b[2]" opacity="0.35" class="fairy-glow" :style="{ animationDelay: `${i * 0.3}s` }" />
+        <circle :cx="b[0]" :cy="b[1] + 3" r="2.2" :fill="b[2]" />
+      </g>
+      <ellipse cx="0" cy="0" rx="12" ry="2" fill="#4A3426" opacity="0.08" />
+    </g>
+
     <g v-else-if="decoration === 'bunny'" class="deco-body">
       <ellipse cx="0" cy="0" rx="14" ry="2.2" fill="#4A3426" opacity="0.1" />
       <g class="bunny-ear-back"><path d="M5 -22 Q2 -38 7 -40 Q12 -38 10 -22Z" fill="#EDE3D6" /></g>
@@ -185,6 +220,12 @@ watch(
 </template>
 
 <style scoped>
+.is-animated .fairy-glow {
+  animation: fairy 2.4s ease-in-out infinite;
+}
+@keyframes fairy {
+  50% { opacity: 0.1; }
+}
 .deco-body,
 .wing {
   transform-box: fill-box;

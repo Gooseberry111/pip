@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getStorage } from '@/services/storage'
-import { ITEMS, DEFAULT_LOADOUT, MAX_DECORATIONS, PACKET_COST, itemsUnlockedAtLevel, packetItems } from '@/data/items'
+import { ITEMS, DEFAULT_LOADOUT, MAX_DECORATIONS, PACKET_COST, itemsUnlockedAtLevel, packetItems, findItem } from '@/data/items'
 import { DAILY_TASKS, todayKey } from '@/data/daily'
 import { levelReward } from '@/data/games'
 import { goalsForWeek, weekKey, GOAL_REWARD, BLOOM_BOX_PETALS } from '@/data/weekly'
 import { findMood } from '@/data/moods'
+import { factOrder, factSlot, findFact } from '@/data/facts'
 import { daysTogether } from '@/utils/timeOfDay'
 import { setSoundEnabled } from '@/utils/sound'
 import { setMusicEnabled } from '@/utils/music'
@@ -27,6 +28,10 @@ import {
   isMaxLevel,
   pourWater,
   simulateTime,
+  drinkSlot,
+  isAsleep,
+  DRINK_REWARD,
+  PERFECT_DAY,
 } from '@/utils/plantLogic'
 
 const SCHEMA_VERSION = 2
@@ -47,7 +52,23 @@ function freshWeekly() {
 }
 
 const JOURNAL_LIMIT = 300
+const CHAT_LIMIT = 60 // messages kept on the phone
+
+function newDeviceId() {
+  const bytes = new Uint8Array(12)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
 const GAME_NAMES = {
+  burst: 'Bloom Burst',
+  tac: 'Garden Tac Toe',
+  checkers: 'Garden Checkers',
+  words: 'Picture Words',
+  search: 'Word Search',
+  pop: 'Petal Pop',
+  hotel: 'Bug Hotel',
+  race: 'Snail Race',
+  rhythm: 'Rain Rhythm',
   rain: 'Raindrop Catch',
   memory: 'Seed Memory',
   firefly: 'Firefly Night',
@@ -79,14 +100,20 @@ function freshPip(now = Date.now()) {
     daily: freshDaily(),
     bestScores: { rain: 0, memory: 0, song: 0 },
     levels: {}, // { game: { unlocked: 1, stars: { 1: 3 } } }
+    introSeen: {}, // games whose how-to-play card has been shown
     journal: [], // little moments, newest first
     weekly: freshWeekly(),
+    factsSeen: [], // fact ids, in the order they were read
+    lastFactSlot: null, // the 3 hour window of the last fact read
+    chat: [], // { role: 'user' | 'pip', text, at }
+    deviceId: newDeviceId(), // anonymous, only used for the daily chat limit
     soundOn: true,
     musicOn: true,
     hapticsOn: true,
     remindersOn: false,
     reminderTime: '19:00',
     checkinOn: true,
+    drinks: { day: '', morning: false, afternoon: false, night: false }, // today's three drinks
   }
 }
 
@@ -116,14 +143,20 @@ export const usePipStore = defineStore('pip', () => {
   const daily = ref(freshDaily()) // today's little things, refreshed each day
   const bestScores = ref({ rain: 0, memory: 0, song: 0 })
   const levels = ref({})
+  const introSeen = ref({})
   const journal = ref([])
   const weekly = ref(freshWeekly())
+  const factsSeen = ref([])
+  const lastFactSlot = ref(null)
+  const chat = ref([])
+  const deviceId = ref(newDeviceId())
   const soundOn = ref(true)
   const musicOn = ref(true)
   const hapticsOn = ref(true)
   const remindersOn = ref(false)
   const reminderTime = ref('19:00')
   const checkinOn = ref(true)
+  const drinks = ref({ day: '', morning: false, afternoon: false, night: false })
 
   // ---- session-only state (not saved) ----
   const ready = ref(false)
@@ -134,8 +167,8 @@ export const usePipStore = defineStore('pip', () => {
     plantName, growthLevel, growthProgress, health, waterLevel, lastWatered, lastUpdated, createdAt, startedAt,
     currentPot, currentLeaf, currentFlower, currentBackground, currentDecorations,
     unlockedPots, unlockedLeaves, unlockedFlowers, unlockedDecorations, unlockedBackgrounds,
-    unseenItems, petals, daily, bestScores, levels, journal, weekly,
-    soundOn, musicOn, hapticsOn, remindersOn, reminderTime, checkinOn,
+    unseenItems, petals, daily, bestScores, levels, introSeen, journal, weekly, factsSeen, lastFactSlot, chat, deviceId,
+    soundOn, musicOn, hapticsOn, remindersOn, reminderTime, checkinOn, drinks,
   }
   const unlockedLists = {
     pots: unlockedPots, leaves: unlockedLeaves, flowers: unlockedFlowers,
@@ -174,7 +207,27 @@ export const usePipStore = defineStore('pip', () => {
       weeklyGoals.value.some((g) => g.done && !g.claimed) ||
       (weeklyGoals.value.every((g) => g.claimed) && !weekly.value.boxClaimed),
   )
-  const hoursToThirsty = computed(() => hoursUntilThirsty(waterLevel.value))
+  const hoursToThirsty = computed(() => hoursUntilThirsty(waterLevel.value, lastUpdated.value))
+
+  // ---- drink times: morning, afternoon and night ----
+  // lastUpdated ticks every minute while the app is open, so these stay fresh.
+  const slotNow = computed(() => drinkSlot(new Date(Math.max(Date.now(), lastUpdated.value))))
+  const drinksToday = computed(() => {
+    const d = drinks.value.day === slotNow.value.day ? drinks.value : { morning: false, afternoon: false, night: false }
+    return { morning: d.morning, afternoon: d.afternoon, night: d.night }
+  })
+  const drinkWaiting = computed(() => hasStarted.value && !drinksToday.value[slotNow.value.slot])
+  const asleep = computed(() => hasStarted.value && isAsleep(new Date(Math.max(Date.now(), lastUpdated.value))))
+
+  // ---- did you know? ----
+  // lastUpdated ticks every minute while the app is open, so this stays fresh.
+  const currentSlot = computed(() => factSlot(Math.max(Date.now(), lastUpdated.value)))
+  const nextFact = computed(() => {
+    const order = factOrder(createdAt.value)
+    const unseen = order.find((id) => !factsSeen.value.includes(id))
+    return findFact(unseen ?? order[currentSlot.value % order.length])
+  })
+  const factWaiting = computed(() => hasStarted.value && lastFactSlot.value !== currentSlot.value)
 
   function isUnlocked(category, id) {
     return unlockedLists[category]?.value.includes(id) ?? false
@@ -201,6 +254,7 @@ export const usePipStore = defineStore('pip', () => {
     for (const [key, field] of Object.entries(fields)) {
       field.value = data[key] !== undefined ? data[key] : base[key]
     }
+    if (!deviceId.value) deviceId.value = newDeviceId()
     // Saves from before onboarding existed already have a planted Pip.
     if (data.startedAt === undefined && data.version) startedAt.value = data.createdAt ?? Date.now()
     applySettings()
@@ -237,7 +291,7 @@ export const usePipStore = defineStore('pip', () => {
     }
     const elapsed = Math.max(0, now - lastUpdated.value)
     const before = growthLevel.value
-    const { waterLevel: water, growthGain } = simulateTime(waterLevel.value, elapsed)
+    const { waterLevel: water, growthGain } = simulateTime(waterLevel.value, elapsed, now)
     waterLevel.value = water
     health.value = getHealth(water)
     lastUpdated.value = now
@@ -338,7 +392,52 @@ export const usePipStore = defineStore('pip', () => {
     if (!result.wasFull) {
       result.reward = completeTask('water')
       track('water')
+      result.drink = takeDrink()
     }
+    return result
+  }
+
+  /** The first watering in each drink time is a proper drink: a little thank you, and a bigger one for all three. */
+  function takeDrink() {
+    const { day, slot } = slotNow.value
+    const today = drinks.value.day === day ? drinks.value : { day, morning: false, afternoon: false, night: false }
+    if (today[slot]) return null
+    const next = { ...today, day, [slot]: true }
+    drinks.value = next
+    let petalsGiven = DRINK_REWARD.petals
+    let growth = DRINK_REWARD.growth
+    const perfect = next.morning && next.afternoon && next.night
+    if (perfect) {
+      petalsGiven += PERFECT_DAY.petals
+      growth += PERFECT_DAY.growth
+      track('perfectDay')
+      if (!journal.value.some((e) => e.type === 'perfect')) {
+        addJournal({ type: 'perfect', title: 'A perfect day of drinks', text: 'Morning, afternoon and night. Pip felt so looked after.' })
+      }
+    }
+    petals.value += petalsGiven
+    track('drink')
+    const result = grow(growth)
+    queueCelebration(result)
+    save()
+    return { slot, petals: petalsGiven, perfect }
+  }
+
+  /** A treat from the farm kitchen (or anything from the barn). */
+  function feed(points, what = '') {
+    catchUp({ celebrate: false })
+    const result = grow(points)
+    track('treat')
+    queueCelebration(result)
+    save()
+    return { ...result, what }
+  }
+
+  /** Growth from a wish come true, an order, or a gift. */
+  function bonusGrowth(points) {
+    const result = grow(points)
+    queueCelebration(result)
+    save()
     return result
   }
 
@@ -384,6 +483,17 @@ export const usePipStore = defineStore('pip', () => {
     addJournal({ type: 'treasure', category: item.category, itemId: item.id, title: `Found a ${item.name}`, text: 'A rare treasure from a mystery seed packet.' })
     save()
     return item
+  }
+
+  /** Buy one of Pip's looks from the shop. */
+  function buyItem(category, id) {
+    const item = findItem(category, id)
+    if (!item?.shop || isUnlocked(category, id)) return false
+    if (!spendPetals(item.shop)) return false
+    unlock({ ...item, category })
+    track('shop')
+    save()
+    return true
   }
 
   /** Remember a personal best. For games where fewer is better (moves), pass lowerIsBetter. */
@@ -444,6 +554,29 @@ export const usePipStore = defineStore('pip', () => {
       ...entry,
     }
     journal.value = [item, ...journal.value].slice(0, JOURNAL_LIMIT)
+  }
+
+  /** Read the waiting fact. Returns it, plus a petal the first time it's read. */
+  function readFact() {
+    const fact = nextFact.value
+    if (!fact) return null
+    const isNew = !factsSeen.value.includes(fact.id)
+    if (isNew) factsSeen.value = [...factsSeen.value, fact.id]
+    lastFactSlot.value = currentSlot.value
+    if (isNew) petals.value += 1
+    save()
+    return { fact, petals: isNew ? 1 : 0 }
+  }
+
+  // ---- talking to Pip ----
+  function addChat(role, text) {
+    chat.value = [...chat.value, { role, text, at: Date.now() }].slice(-CHAT_LIMIT)
+    save()
+  }
+
+  function clearChat() {
+    chat.value = []
+    save()
   }
 
   // ---- mood check-in ----
@@ -517,6 +650,24 @@ export const usePipStore = defineStore('pip', () => {
   function toggleCheckin() {
     checkinOn.value = !checkinOn.value
     save()
+  }
+
+  function markIntroSeen(game) {
+    if (introSeen.value[game]) return
+    introSeen.value = { ...introSeen.value, [game]: true }
+    save()
+  }
+
+  /** A round of a game without levels finished (Tac Toe, party races). Returns petals earned. */
+  function finishRound(game, petalsWon = 0, note = null) {
+    petals.value += Math.max(0, petalsWon)
+    track('game')
+    const bonus = completeTask('play')
+    if (note && !journal.value.some((e) => e.type === 'game' && e.title === note)) {
+      addJournal({ type: 'game', title: note, text: GAME_NAMES[game] ?? '' })
+    }
+    save()
+    return petalsWon + bonus
   }
 
   /** Spend petals (for hints). Returns false if there aren't enough. */
@@ -648,6 +799,11 @@ export const usePipStore = defineStore('pip', () => {
 
   async function devReset() {
     await getStorage().clear()
+    try {
+      localStorage.removeItem('pip:farm:v1')
+    } catch {
+      // ignore
+    }
     applyData(freshPip())
     syncUnlocks({ markUnseen: false })
     await save()
@@ -658,13 +814,13 @@ export const usePipStore = defineStore('pip', () => {
     ready, welcome, pendingCelebration,
     stage, stageIndex, nextStage, stagePercent, levelPercent, growthValue, droop, atMaxLevel, isFull,
     unseenCount, hasStarted, lockedPacketItems, canOpenPacket, giftWaiting, checkinWaiting,
-    weeklyGoals, weeklyClaimable, hoursToThirsty,
+    weeklyGoals, weeklyClaimable, hoursToThirsty, nextFact, factWaiting, currentSlot, slotNow, drinksToday, drinkWaiting, asleep,
     allItems: ITEMS,
     isUnlocked, isEquipped, isTaskDone,
-    load, save, catchUp, water, giveWater, equip, wear, markSeen, markCategorySeen, start, rename, toggleSound,
-    earn, completeTask, claimGift, openPacket, recordScore, levelProgress, totalStars, completeLevel, spendPetals,
+    load, save, catchUp, water, giveWater, feed, bonusGrowth, takeDrink, unlock, buyItem, equip, wear, markSeen, markCategorySeen, start, rename, toggleSound,
+    earn, completeTask, claimGift, openPacket, recordScore, levelProgress, totalStars, completeLevel, spendPetals, markIntroSeen, finishRound,
     toggleMusic, toggleHaptics, toggleCheckin, setReminders,
-    addJournal, logMood, skipCheckin, track, claimGoal, claimBloomBox,
+    addJournal, logMood, skipCheckin, track, claimGoal, claimBloomBox, readFact, addChat, clearChat,
     clearWelcome, clearCelebration, queueCelebration,
     devPassTime, devGrow, devPetals, devReset,
   }

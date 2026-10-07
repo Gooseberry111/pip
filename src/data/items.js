@@ -21,6 +21,10 @@ export const ITEMS = {
     { id: 'strawberry', name: 'Strawberry', packet: true, blurb: 'Sweet, with tiny seeds.' },
     { id: 'lilac', name: 'Lilac Meadow', packet: true, blurb: 'Little flowers all around.' },
     { id: 'cloud', name: 'Cloud Nine', packet: true, blurb: 'Soft as a summer sky.' },
+    { id: 'mint', name: 'Fresh Mint', shop: 30, blurb: 'Cool and clean, like morning dew.' },
+    { id: 'cocoa', name: 'Cocoa', shop: 40, blurb: 'Warm and rich, like hot chocolate.' },
+    { id: 'coral', name: 'Coral Sunset', shop: 55, blurb: 'The last light of a summer day.' },
+    { id: 'midnight', name: 'Midnight', shop: 70, blurb: 'Deep blue, for night owls.' },
   ],
   leaves: [
     { id: 'classic', name: 'Classic', level: 1, blurb: 'Pip’s very first leaves.' },
@@ -29,6 +33,8 @@ export const ITEMS = {
     { id: 'variegated', name: 'Variegated', level: 10, blurb: 'Two shades of green.' },
     { id: 'rosy', name: 'Rosy', level: 12, blurb: 'A secret pink underneath.' },
     { id: 'starlight', name: 'Starlight', packet: true, blurb: 'Twinkles a little, even by day.' },
+    { id: 'golden', name: 'Golden Hour', shop: 45, blurb: 'Leaves that glow like late sunshine.' },
+    { id: 'frost', name: 'Frost', shop: 60, blurb: 'A silvery touch of winter.' },
   ],
   flowers: [
     { id: 'daisy', name: 'Daisy', level: 5, blurb: 'A cheerful little bloom.' },
@@ -36,6 +42,9 @@ export const ITEMS = {
     { id: 'sunny', name: 'Sunny', level: 11, blurb: 'A tiny piece of sunshine.' },
     { id: 'tulip', name: 'Tulip', level: 12, blurb: 'Holding a little cup of light.' },
     { id: 'poppy', name: 'Poppy', packet: true, blurb: 'Bright and brave.' },
+    { id: 'violet', name: 'Violet', shop: 40, blurb: 'Small, sweet and a little shy.' },
+    { id: 'cornflower', name: 'Cornflower', shop: 50, blurb: 'The bluest blue in the field.' },
+    { id: 'peony', name: 'Peony', shop: 65, blurb: 'Big, soft and full of petals.' },
   ],
   decorations: [
     { id: 'pebbles', name: 'Pebbles', level: 4, blurb: 'Smooth stones from a quiet river.' },
@@ -48,6 +57,9 @@ export const ITEMS = {
     { id: 'kitty', name: 'Kitty', packet: true, blurb: 'Napping in a sunny spot.' },
     { id: 'starjar', name: 'Firefly Jar', packet: true, blurb: 'A jar of tiny glowing friends.' },
     { id: 'rainbow', name: 'Rainbow', packet: true, blurb: 'After every little rain.' },
+    { id: 'frog', name: 'Frog', shop: 35, blurb: 'Says hello with a little ribbit.' },
+    { id: 'birdhouse', name: 'Birdhouse', shop: 45, blurb: 'A cosy home for a tiny bird.' },
+    { id: 'fairylights', name: 'Fairy Lights', shop: 60, blurb: 'A string of warm little stars.' },
   ],
   backgrounds: [
     { id: 'windowsill', name: 'Windowsill', level: 1, blurb: 'A sunny spot by the window.' },
@@ -81,6 +93,13 @@ export function packetItems() {
 }
 
 export const PACKET_COST = 20
+
+/** Items bought with petals in the shop. */
+export function shopItems() {
+  return Object.entries(ITEMS).flatMap(([category, list]) =>
+    list.filter((item) => item.shop).map((item) => ({ ...item, category })),
+  )
+}
 
 export function itemsUnlockedAtLevel(level) {
   const result = []
