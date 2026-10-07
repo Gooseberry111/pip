@@ -12,6 +12,8 @@ import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
 import FarmMap from '@/components/farm/FarmMap.vue'
 import Icon from '@/components/Icon.vue'
+import GiftSheet from '@/components/farm/GiftSheet.vue'
+import { GOODS } from '@/data/farm'
 
 const HELPS_PER_FARM = 5
 
@@ -24,6 +26,7 @@ const code = computed(() => String(route.params.code || '').toUpperCase())
 const data = ref(null)
 const error = ref('')
 const helped = ref([])
+const giftOpen = ref(false)
 const message = ref('')
 const now = ref(Date.now())
 let clock = null
@@ -107,6 +110,9 @@ onBeforeUnmount(() => clearInterval(clock))
         <template v-if="isMine">This is how friends see your farm.</template>
         <template v-else>Tap a growing crop to water it ({{ left }} {{ left === 1 ? 'drop' : 'drops' }} left today). It helps {{ data.plant }}’s crops grow quicker.</template>
       </p>
+      <button v-if="!isMine" type="button" class="btn btn-secondary mt-3 w-full gap-2!" @click="giftOpen = true">
+        <span class="text-lg">🎁</span> Send {{ data.plant }} a gift
+      </button>
       <div class="mt-4">
         <FarmMap
           :objects="data.objects"
@@ -120,6 +126,15 @@ onBeforeUnmount(() => clearInterval(clock))
         />
       </div>
     </template>
+
+    <GiftSheet
+      v-if="data"
+      :open="giftOpen"
+      :code="code"
+      :friend="data.plant"
+      @close="giftOpen = false"
+      @sent="(g) => (giftOpen = false, say(`Sent ${g.n} ${GOODS[g.good].name.toLowerCase()} to ${data.plant}! 🎁`), playSound('petals'))"
+    />
 
     <Transition name="toast">
       <div v-if="message" class="fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex justify-center px-4">

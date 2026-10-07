@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { DAILY_TASKS } from '@/data/daily'
@@ -28,22 +28,41 @@ import PetalIcon from '@/components/PetalIcon.vue'
 import UnlockReveal from '@/components/UnlockReveal.vue'
 import WeeklyGoals from '@/components/WeeklyGoals.vue'
 import GameArt from '@/components/games/GameArt.vue'
-import BreatheWithPip from '@/components/games/BreatheWithPip.vue'
-import RaindropCatch from '@/components/games/RaindropCatch.vue'
-import SeedMemory from '@/components/games/SeedMemory.vue'
-import FireflyNight from '@/components/games/FireflyNight.vue'
-import FlowerSong from '@/components/games/FlowerSong.vue'
-import SeedGlide from '@/components/games/SeedGlide.vue'
-import BloomPuzzle from '@/components/games/BloomPuzzle.vue'
-import BloomBurst from '@/components/games/BloomBurst.vue'
-import GardenTacToe from '@/components/games/GardenTacToe.vue'
-import GardenCheckers from '@/components/games/GardenCheckers.vue'
-import SnailRace from '@/components/games/SnailRace.vue'
-import RainRhythm from '@/components/games/RainRhythm.vue'
-import BugHotel from '@/components/games/BugHotel.vue'
-import PetalPop from '@/components/games/PetalPop.vue'
-import LeafWords from '@/components/games/LeafWords.vue'
 import PacketOpening from '@/components/games/PacketOpening.vue'
+// each game is loaded the first time it's opened (and fetched quietly in the background)
+const GAME_LOADERS = {
+  BreatheWithPip: () => import('@/components/games/BreatheWithPip.vue'),
+  RaindropCatch: () => import('@/components/games/RaindropCatch.vue'),
+  SeedMemory: () => import('@/components/games/SeedMemory.vue'),
+  FireflyNight: () => import('@/components/games/FireflyNight.vue'),
+  FlowerSong: () => import('@/components/games/FlowerSong.vue'),
+  SeedGlide: () => import('@/components/games/SeedGlide.vue'),
+  BloomPuzzle: () => import('@/components/games/BloomPuzzle.vue'),
+  BloomBurst: () => import('@/components/games/BloomBurst.vue'),
+  GardenTacToe: () => import('@/components/games/GardenTacToe.vue'),
+  GardenCheckers: () => import('@/components/games/GardenCheckers.vue'),
+  SnailRace: () => import('@/components/games/SnailRace.vue'),
+  RainRhythm: () => import('@/components/games/RainRhythm.vue'),
+  BugHotel: () => import('@/components/games/BugHotel.vue'),
+  PetalPop: () => import('@/components/games/PetalPop.vue'),
+  LeafWords: () => import('@/components/games/LeafWords.vue'),
+}
+const lazyGame = (name) => defineAsyncComponent(GAME_LOADERS[name])
+const BreatheWithPip = lazyGame('BreatheWithPip')
+const RaindropCatch = lazyGame('RaindropCatch')
+const SeedMemory = lazyGame('SeedMemory')
+const FireflyNight = lazyGame('FireflyNight')
+const FlowerSong = lazyGame('FlowerSong')
+const SeedGlide = lazyGame('SeedGlide')
+const BloomPuzzle = lazyGame('BloomPuzzle')
+const BloomBurst = lazyGame('BloomBurst')
+const GardenTacToe = lazyGame('GardenTacToe')
+const GardenCheckers = lazyGame('GardenCheckers')
+const SnailRace = lazyGame('SnailRace')
+const RainRhythm = lazyGame('RainRhythm')
+const BugHotel = lazyGame('BugHotel')
+const PetalPop = lazyGame('PetalPop')
+const LeafWords = lazyGame('LeafWords')
 
 const pip = usePipStore()
 const router = useRouter()
@@ -152,6 +171,9 @@ function useRevealed(item) {
 
 // The check-in can send someone straight to a game (a calm minute of breathing).
 onMounted(() => {
+  // fetch the games in the background once things are quiet, so they open instantly later
+  const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1500))
+  idle(() => Object.values(GAME_LOADERS).forEach((load) => load().catch(() => {})))
   const game = route.query.game
   if (game && GAMES.some((g) => g.id === game)) {
     activeGame.value = game

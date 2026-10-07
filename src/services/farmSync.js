@@ -15,7 +15,7 @@ export function syncFarmNow() {
 const DEBOUNCE = 20 * 1000 // after a change, wait a little before uploading
 const POLL = 5 * 60 * 1000 // check for visitors' help every few minutes
 
-export function startFarmSync(farm, { onHelps, onStatus } = {}) {
+export function startFarmSync(farm, { onHelps, onGifts, onStatus } = {}) {
   let timer = null
   let busy = false
   let wasShared = farm.state.shared
@@ -45,6 +45,10 @@ export function startFarmSync(farm, { onHelps, onStatus } = {}) {
     if (r.ok && Array.isArray(r.helps)) {
       const fresh = farm.applyHelps(r.helps)
       if (fresh.length) onHelps?.(fresh)
+    }
+    if (r.ok && Array.isArray(r.gifts)) {
+      const fresh = farm.applyGifts(r.gifts)
+      if (fresh.length) onGifts?.(fresh)
     }
   }
 

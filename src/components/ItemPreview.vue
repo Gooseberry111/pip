@@ -6,6 +6,7 @@ import LeafArt from './art/LeafArt.vue'
 import FlowerArt from './art/FlowerArt.vue'
 import DecorationArt from './art/DecorationArt.vue'
 import SceneBackground from './art/SceneBackground.vue'
+import AccessoryArt from './art/AccessoryArt.vue'
 import { STEM_COLOR } from '@/utils/shapes'
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const viewBox = computed(() =>
     ? '-37 -36 74 42'
     : ({
       pots: '46 150 108 92',
+      accessories: '48 152 104 88',
       leaves: '-34 -40 68 56',
       flowers: '-20 -20 40 40',
       decorations: '-26 -46 52 52',
@@ -42,5 +44,13 @@ const viewBox = computed(() =>
     <FlowerArt v-else-if="category === 'flowers'" :flower="id" :bloom="1" :size="1.35" />
     <DecorationArt v-else-if="category === 'decorations'" :decoration="id" :animated="false" />
     <SceneBackground v-else-if="category === 'backgrounds'" :scene="id" />
+    <g v-else-if="category === 'accessories'">
+      <PotArt pot="cream" />
+      <g transform="translate(100 207)" fill="#47352A">
+        <ellipse cx="-14" cy="-1" rx="4" ry="4.6" /><ellipse cx="14" cy="-1" rx="4" ry="4.6" />
+        <path d="M-4 6.6 Q0 10 4 6.6" stroke="#47352A" stroke-width="1.8" fill="none" stroke-linecap="round" />
+      </g>
+      <AccessoryArt :accessory="id" />
+    </g>
   </svg>
 </template>

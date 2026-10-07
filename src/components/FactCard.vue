@@ -48,6 +48,7 @@ const collected = computed(() => `${pip.factsSeen.length} of ${FACTS.length} in 
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
+          :accessory="pip.currentAccessory"
           :interactive="false"
           :idle="false"
           class="h-full w-full"
@@ -68,7 +69,7 @@ const collected = computed(() => `${pip.factsSeen.length} of ${FACTS.length} in 
         <p class="text-sm font-medium italic text-bark-500">{{ thought }}</p>
       </div>
 
-      <p class="mt-3 text-xs font-semibold text-bark-300">{{ collected }} · a new one every few hours</p>
+      <p class="mt-3 text-xs font-semibold text-bark-300">{{ collected }} · a new one each morning and evening</p>
 
       <div class="mt-5 flex flex-col gap-1.5">
         <button type="button" class="btn btn-primary w-full" @click="emit('close')">Lovely!</button>

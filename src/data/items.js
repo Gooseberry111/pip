@@ -7,6 +7,7 @@ export const CATEGORIES = [
   { id: 'flowers', label: 'Flowers', single: 'flower' },
   { id: 'decorations', label: 'Decorations', single: 'decoration' },
   { id: 'backgrounds', label: 'Scenes', single: 'scene' },
+  { id: 'accessories', label: 'Accessories', single: 'accessory' },
 ]
 
 export const ITEMS = {
@@ -61,6 +62,16 @@ export const ITEMS = {
     { id: 'birdhouse', name: 'Birdhouse', shop: 45, blurb: 'A cosy home for a tiny bird.' },
     { id: 'fairylights', name: 'Fairy Lights', shop: 60, blurb: 'A string of warm little stars.' },
   ],
+  accessories: [
+    { id: 'glasses', name: 'Round Glasses', shop: 25, blurb: 'For reading seed packets.' },
+    { id: 'bowtie', name: 'Bow Tie', shop: 30, blurb: 'Dressed up for a garden party.' },
+    { id: 'bow', name: 'Ribbon Bow', shop: 30, blurb: 'A little pink bow, tied with care.' },
+    { id: 'freckles', name: 'Freckles', shop: 20, blurb: 'From all that sunshine.' },
+    { id: 'scarf', name: 'Cosy Scarf', shop: 45, blurb: 'Warm and snug on chilly mornings.' },
+    { id: 'beret', name: 'Chef’s Beret', badge: 'cook-10', blurb: 'Earned in the farm kitchen.' },
+    { id: 'heartglasses', name: 'Heart Glasses', badge: 'gift-5', blurb: 'For the most generous friends.' },
+    { id: 'flowercrown', name: 'Flower Crown', badge: 'perfect-7', blurb: 'Seven perfect days of drinks.' },
+  ],
   backgrounds: [
     { id: 'windowsill', name: 'Windowsill', level: 1, blurb: 'A sunny spot by the window.' },
     { id: 'meadow', name: 'Meadow', level: 4, blurb: 'Soft hills and open sky.' },
@@ -76,6 +87,7 @@ export const DEFAULT_LOADOUT = {
   currentLeaf: 'classic',
   currentFlower: null,
   currentBackground: 'windowsill',
+  currentAccessory: null,
   currentDecorations: [],
 }
 

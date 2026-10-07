@@ -7,6 +7,7 @@ import { STEM_COLOR, STEM_DARK, tiredTint } from '@/utils/shapes'
 import PotArt from './art/PotArt.vue'
 import LeafArt from './art/LeafArt.vue'
 import FlowerArt from './art/FlowerArt.vue'
+import AccessoryArt from './art/AccessoryArt.vue'
 
 const props = defineProps({
   growth: { type: Number, default: 1 }, // 0 seed … 5 flowering (continuous)
@@ -15,6 +16,7 @@ const props = defineProps({
   pot: { type: String, default: 'terracotta' },
   leaf: { type: String, default: 'classic' },
   flower: { type: String, default: null },
+  accessory: { type: String, default: null },
   sleeping: { type: Boolean, default: false },
   calm: { type: Boolean, default: false }, // eyes softly closed, content (breathing together)
   wet: { type: Boolean, default: false }, // just watered: darker soil, dewdrops
@@ -332,6 +334,8 @@ onBeforeUnmount(() => {
             <ellipse v-else cx="0" cy="7.4" rx="1.6" ry="1.9" stroke="none" />
           </g>
         </g>
+
+        <AccessoryArt :accessory="accessory" />
 
         <!-- the plant -->
         <g transform="translate(100 171)">

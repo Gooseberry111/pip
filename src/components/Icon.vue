@@ -196,6 +196,10 @@ defineProps({
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
     </template>
+    <template v-else-if="name === 'cloud'">
+      <path d="M7 18.5h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 9.1 4.7 4.7 0 0 0 7 18.5Z" />
+      <path d="M12 11v5M9.8 13.2 12 11l2.2 2.2" />
+    </template>
     <template v-else-if="name === 'undo'">
       <path d="M9 14 4 9l5-5" />
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />

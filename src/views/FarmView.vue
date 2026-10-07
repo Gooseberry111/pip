@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useFarmStore } from '@/stores/farm'
 import { usePipStore } from '@/stores/pip'
 import { GOODS, PLACEABLE, LAND } from '@/data/farm'
-import { cropById, treeById, producerById, kindOf } from '@/utils/farmLogic'
+import { cropById, kindOf, sizeOf } from '@/utils/farmLogic'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
 import PageHeader from '@/components/PageHeader.vue'
@@ -23,6 +23,7 @@ import KitchenSheet from '@/components/farm/KitchenSheet.vue'
 import OrdersSheet from '@/components/farm/OrdersSheet.vue'
 import PipSheet from '@/components/farm/PipSheet.vue'
 import FriendsSheet from '@/components/farm/FriendsSheet.vue'
+import FarmTour from '@/components/farm/FarmTour.vue'
 
 const farm = useFarmStore()
 const pip = usePipStore()
@@ -39,10 +40,16 @@ const burst = ref(0)
 
 const xpFill = computed(() => (farm.state.level >= farm.MAX_FARM_LEVEL ? 1 : farm.state.xp / farm.xpNeeded))
 const inventory = computed(() => Object.entries(farm.state.inventory).filter(([, n]) => n > 0).map(([type, n]) => ({ type, n, name: PLACEABLE[type]?.name ?? type })))
-const pipLook = computed(() => ({ growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower }))
+const pipLook = computed(() => ({ growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower, accessory: pip.currentAccessory }))
 const selectedObj = computed(() => (selected.value == null ? null : farm.find(selected.value)))
 const nextLand = computed(() => LAND[farm.state.land + 1] ?? null)
 const wishGood = computed(() => (farm.wish && !farm.wish.done ? farm.wish.good : null))
+
+function trayBox(type) {
+  const { w, h } = sizeOf(type)
+  const size = Math.max(w, h + 1) * 40
+  return `${(w * 40 - size) / 2} ${-40 + ((h + 1) * 40 - size) / 2} ${size} ${size}`
+}
 
 // ---- little messages ----
 const toasts = ref([])
@@ -194,6 +201,29 @@ function putAway() {
   }
 }
 
+// ---- the farm tour: each step moves on when you do the thing ----
+const tour = computed(() => farm.state.tutorial)
+const tourHighlight = computed(() => (tour.value === 1 ? 'plot-empty' : tour.value === 2 ? 'plot-crop' : null))
+watch(
+  () => [tour.value, farm.objects.some((o) => o.crop), Object.keys(farm.state.almanac).length],
+  ([t, planted, picked]) => {
+    if (t === 1 && (planted || picked)) farm.tourNext(1)
+    else if (t === 2 && picked) farm.tourNext(2)
+  },
+  { immediate: true },
+)
+watch(sheet, (s) => {
+  if (s === 'orders') farm.tourNext(3)
+  if (s === 'kitchen') farm.tourNext(4)
+})
+watch(mode, (m) => {
+  if (m === 'build' && tour.value === 5) {
+    farm.tourFinish(true)
+    toast('Farm tour finished! +10 petals')
+    playSound('petals')
+  }
+})
+
 // ---- level ups ----
 watch(
   () => farm.levelUp,
@@ -253,16 +283,16 @@ onMounted(() => {
     <div class="no-scrollbar -mx-5 mt-3 overflow-x-auto px-5">
       <div class="flex w-max gap-2 pb-1">
         <button type="button" class="tool" @click="sheet = 'barn'">
-          <span class="text-base">🏚️</span> Barn <span class="tabular-nums text-bark-400">{{ farm.barnUsed }}/{{ farm.barnCapacity }}</span>
+          <span class="text-base">🌾</span> Barn <span class="tabular-nums text-bark-400">{{ farm.barnUsed }}/{{ farm.barnCapacity }}</span>
         </button>
-        <button type="button" class="tool" @click="sheet = 'kitchen'">
+        <button type="button" class="tool" :class="{ 'is-hint': tour === 4 }" @click="sheet = 'kitchen'">
           <span class="text-base">🍳</span> Kitchen
         </button>
-        <button type="button" class="tool relative" @click="sheet = 'orders'">
+        <button type="button" class="tool relative" :class="{ 'is-hint': tour === 3 }" @click="sheet = 'orders'">
           <span class="text-base">📋</span> Orders
           <span v-if="farm.ordersReady" class="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-clay-300 px-1 text-[0.6875rem] font-extrabold text-white">{{ farm.ordersReady }}</span>
         </button>
-        <button type="button" class="tool" :class="{ 'is-on': mode === 'build' }" @click="toggleBuild">
+        <button type="button" class="tool" :class="{ 'is-on': mode === 'build', 'is-hint': tour === 5 }" @click="toggleBuild">
           <Icon name="move" :size="16" :stroke="2.2" /> {{ mode === 'build' ? 'Done' : 'Arrange' }}
         </button>
         <button type="button" class="tool" @click="goShop('farm')">
@@ -282,8 +312,8 @@ onMounted(() => {
       {{ placing ? `Tap a spot to place the ${PLACEABLE[placing].name.toLowerCase()}.` : 'Drag things to move them. Tap one to select it.' }}
     </p>
 
-    <!-- the farm -->
-    <div class="relative mt-4">
+    <!-- the farm (with room above for the first row's roofs and treetops) -->
+    <div class="relative mt-4 pt-10">
       <FarmMap
         :objects="farm.objects"
         :rows="farm.rows"
@@ -297,6 +327,7 @@ onMounted(() => {
         :pip-look="pipLook"
         :pip-sleeping="pip.asleep"
         :wish-good="wishGood"
+        :highlight="tourHighlight"
         @tap="onTap"
         @tap-tile="onTapTile"
         @move="onMove"
@@ -307,6 +338,9 @@ onMounted(() => {
     <button v-if="nextLand" type="button" class="mt-3 w-full rounded-2xl border border-dashed border-sand-300 py-3 text-xs font-bold text-bark-400" @click="goShop('farm')">
       {{ nextLand.level > farm.state.level ? `More land opens at farm level ${nextLand.level}` : 'Buy more land in the shop' }}
     </button>
+
+    <!-- room to scroll the bottom rows above the build tray -->
+    <div v-if="mode === 'build'" class="h-36 shrink-0" aria-hidden="true" />
 
     <!-- build tray -->
     <Transition name="tray">
@@ -329,7 +363,7 @@ onMounted(() => {
                 :aria-label="it.name"
                 @click="placing = placing === it.type ? null : it.type"
               >
-                <svg viewBox="-4 -44 88 128" class="h-12 w-12 overflow-visible">
+                <svg :viewBox="trayBox(it.type)" class="h-12 w-12 overflow-visible">
                   <FarmArt :type="it.type" />
                 </svg>
                 <span class="absolute bottom-0.5 right-1 text-[0.6875rem] font-extrabold text-bark-500">×{{ it.n }}</span>
@@ -351,6 +385,8 @@ onMounted(() => {
       </TransitionGroup>
     </div>
 
+    <FarmTour v-if="mode === 'farm'" @skip="farm.tourFinish(false)" />
+
     <PlantSheet :open="sheet === 'plant'" @close="sheet = null" @plant="plant" @plant-all="plantAll" />
     <ItemSheet :uid="sheet === 'item' ? itemUid : null" @close="sheet = null" @water="water" @fertilise="fertilise" @feed="feedProducer" />
     <BarnSheet
@@ -371,6 +407,7 @@ onMounted(() => {
       :open="sheet === 'orders'"
       @close="sheet = null"
       @delivered="(r) => (toast(`Delivered! +${r.petals} petals · +${r.xp} XP`), playSound('win'), haptic('success'))"
+      @community="(r) => (burst++, toast(r.can ? `+${r.petals} petals and a golden watering can!` : `+${r.petals} petals. Thank you, neighbour!`))"
     />
     <PipSheet :open="sheet === 'pip'" @close="sheet = null" @fed="onFed" @barn="sheet = 'barn'" />
     <FriendsSheet :open="sheet === 'friends'" @close="sheet = null" />
@@ -412,6 +449,14 @@ onMounted(() => {
 }
 .tool:active {
   transform: scale(0.96);
+}
+.tool.is-hint {
+  border-color: var(--color-leaf-400);
+  animation: hint-ring 1.4s ease-in-out infinite;
+}
+@keyframes hint-ring {
+  0%, 100% { box-shadow: var(--shadow-soft), 0 0 0 0 rgb(134 173 114 / 0.55); }
+  50% { box-shadow: var(--shadow-soft), 0 0 0 6px rgb(134 173 114 / 0); }
 }
 .tool.is-on {
   background: var(--color-honey-100);

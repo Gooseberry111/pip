@@ -10,7 +10,7 @@ defineProps({
   <header class="flex items-end justify-between gap-4 pt-3">
     <div class="min-w-0">
       <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
-      <h1 class="title-xl mt-1 truncate">
+      <h1 class="title-xl mt-1 break-words">
         <slot name="title">{{ title }}</slot>
       </h1>
     </div>

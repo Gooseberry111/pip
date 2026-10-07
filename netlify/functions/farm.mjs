@@ -5,6 +5,8 @@
 //   DELETE /api/farm                  stop sharing { code, key }
 //   POST   /api/farm/help             water a crop on someone's farm { code, uid, from }
 //   GET    /api/farm/explore          recently updated farms whose owners chose to be listed
+//   POST   /api/farm/gift             send something from your barn { code, from, good, n }
+//   GET    /api/farm/board?codes=A,B  this week's numbers for a few farms (the neighbours' leaderboard)
 //
 // Stored in Netlify Blobs (free). Nothing personal is kept: a farm name, a plant name,
 // the layout, and first names friends type when they visit. The owner's key is stored
@@ -17,6 +19,9 @@ const MAX_BYTES = 60_000
 const MAX_HELPS_KEPT = 60
 const HELPS_PER_DAY = 40
 const EXPLORE_SIZE = 30
+const GIFTS_PER_DAY = 20
+const MAX_GIFTS_KEPT = 60
+const GOOD = /^[a-z]{2,20}$/
 
 // a short list of words that should never appear in a shared name
 const BLOCKED = ['fuck', 'shit', 'cunt', 'bitch', 'nigg', 'faggot', 'slut', 'whore', 'pussy', 'rapist', 'nazi', 'porn']
@@ -60,11 +65,18 @@ function sanitizeFarm(f) {
       ...(o.crop ? { crop: { id: clean(o.crop.id, 20), plantedAt: Number(o.crop.plantedAt) || 0, readyAt: Number(o.crop.readyAt) || 0 } } : {}),
       ...(o.readyAt ? { readyAt: Number(o.readyAt) || 0 } : {}),
     })),
+    week: {
+      key: clean(f?.week?.key, 8),
+      harvests: Math.max(0, Math.min(99999, Number(f?.week?.harvests) || 0)),
+      orders: Math.max(0, Math.min(99999, Number(f?.week?.orders) || 0)),
+      stars: Math.max(0, Math.min(99999, Number(f?.week?.stars) || 0)),
+    },
     pip: {
       growth: Number(f?.pip?.growth) || 0,
       pot: clean(f?.pip?.pot, 20),
       leaf: clean(f?.pip?.leaf, 20),
       flower: f?.pip?.flower ? clean(f.pip.flower, 20) : null,
+      accessory: f?.pip?.accessory ? clean(f.pip.accessory, 20) : null,
     },
     at: Date.now(),
   }
@@ -104,6 +116,39 @@ export default async (req) => {
       rec.helpCount = count + 1
       await store.setJSON(`farm:${code}`, rec)
       return json({ ok: true })
+    }
+
+    // ---- a visitor sends a gift ----
+    if (sub === 'gift' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}))
+      const code = String(body.code || '').toUpperCase()
+      if (!CODE.test(code)) return json({ error: 'bad-code' }, 400)
+      const good = String(body.good || '')
+      const n = Math.floor(Number(body.n) || 0)
+      if (!GOOD.test(good) || n < 1 || n > 10) return json({ error: 'bad-request' }, 400)
+      const rec = await store.get(`farm:${code}`, { type: 'json' })
+      if (!rec) return json({ error: 'not-found' }, 404)
+      const day = today()
+      const count = rec.giftDay === day ? rec.giftCount ?? 0 : 0
+      if (count >= GIFTS_PER_DAY) return json({ error: 'limit' }, 429)
+      const from = clean(body.from, 16)
+      const gift = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, good, n, from: from && kind(from) ? from : 'A friend', at: Date.now() }
+      rec.gifts = [...(rec.gifts ?? []), gift].slice(-MAX_GIFTS_KEPT)
+      rec.giftDay = day
+      rec.giftCount = count + 1
+      await store.setJSON(`farm:${code}`, rec)
+      return json({ ok: true })
+    }
+
+    // ---- the neighbours' leaderboard ----
+    if (sub === 'board' && req.method === 'GET') {
+      const codes = [...new Set(String(url.searchParams.get('codes') || '').toUpperCase().split(','))].filter((c) => CODE.test(c)).slice(0, 20)
+      const farmsFound = []
+      for (const code of codes) {
+        const rec = await store.get(`farm:${code}`, { type: 'json' })
+        if (rec?.farm) farmsFound.push({ code, name: rec.farm.name, plant: rec.farm.plant, level: rec.farm.level, week: rec.farm.week ?? null })
+      }
+      return json({ farms: farmsFound })
     }
 
     if (sub) return json({ error: 'not-found' }, 404)
@@ -147,7 +192,7 @@ export default async (req) => {
       await store.setJSON(`farm:${code}`, rec)
       if (rec.listed) await writeIndex(store, { code, name: farm.name, plant: farm.plant, level: farm.level, at: farm.at })
       else if (existing?.listed) await writeIndex(store, { code }, true)
-      return json({ ok: true, helps: rec.helps ?? [] })
+      return json({ ok: true, helps: rec.helps ?? [], gifts: rec.gifts ?? [] })
     }
 
     return json({ error: 'method' }, 405)

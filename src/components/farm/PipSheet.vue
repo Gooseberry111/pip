@@ -41,6 +41,7 @@ function give(id) {
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
+          :accessory="pip.currentAccessory"
           :sleeping="pip.asleep"
           :interactive="false"
           class="h-full w-full"

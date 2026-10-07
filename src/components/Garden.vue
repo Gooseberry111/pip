@@ -80,6 +80,7 @@ const decorations = computed(() => {
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
+          :accessory="pip.currentAccessory"
           @tap="onTapPip"
           @pet="onPetPip"
         />

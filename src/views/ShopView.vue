@@ -102,7 +102,7 @@ const viewBox = (type) => {
         <p class="eyebrow text-clay-400!">Deal of the day</p>
         <p class="title-md mt-0.5 truncate">{{ PLACEABLE[deal.type].name }}</p>
         <p class="mt-0.5 text-xs font-semibold text-bark-400">
-          <s class="mr-1">{{ deal.was }}</s> 30% off today only
+          Usually {{ deal.was }} · 30% off today only
         </p>
       </div>
       <button type="button" class="btn btn-primary btn-sm shrink-0 gap-1!" :disabled="deal.bought || pip.petals < deal.price" data-sound="none" @click="buyFarm(deal.type)">
@@ -219,7 +219,7 @@ const viewBox = (type) => {
 
     <!-- decorations -->
     <div v-else-if="tab === 'decor'" class="mt-4 grid grid-cols-3 gap-2.5">
-      <div v-for="d in DECOR" :key="d.id" class="tile card p-2.5!" :class="{ 'is-locked': d.level > level }">
+      <div v-for="d in DECOR.filter((x) => !x.special)" :key="d.id" class="tile card p-2.5!" :class="{ 'is-locked': d.level > level }">
         <div class="art aspect-square!">
           <svg :viewBox="viewBox(d.id)" class="h-full w-full overflow-visible"><FarmArt :type="d.id" /></svg>
         </div>

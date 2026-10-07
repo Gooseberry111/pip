@@ -105,7 +105,7 @@ export function isQuiet(hour) {
 
 /**
  * Decide what (if anything) to send one phone right now.
- * Returns { kind: 'thirsty' | 'daily' | null, changes } where `changes` should be saved.
+ * Returns { kind: 'thirsty' | 'harvest' | 'daily' | null, changes } where `changes` should be saved.
  */
 export function planReminder(rec, now = new Date()) {
   const { date, hour, minutes } = localNow(rec.timeZone, now)
@@ -115,9 +115,13 @@ export function planReminder(rec, now = new Date()) {
   const thirstyDue = Boolean(rec.thirstyAt) && now.getTime() >= rec.thirstyAt && rec.thirstySentFor !== rec.thirstyAt
   const dailyDue = rec.lastDailyDate !== date && minutes >= h * 60 + m
 
+  const harvestDue = Boolean(rec.farmReadyAt) && now.getTime() >= rec.farmReadyAt && rec.harvestSentFor !== rec.farmReadyAt
   if (thirstyDue) {
     // one gentle reminder is plenty for today
     return { kind: 'thirsty', changes: { thirstySentFor: rec.thirstyAt, ...(dailyDue ? { lastDailyDate: date } : {}) } }
+  }
+  if (harvestDue) {
+    return { kind: 'harvest', changes: { harvestSentFor: rec.farmReadyAt, ...(dailyDue ? { lastDailyDate: date } : {}) } }
   }
   if (dailyDue) {
     // no hello needed if they've already been to see Pip today

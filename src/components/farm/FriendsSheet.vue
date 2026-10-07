@@ -7,6 +7,7 @@ import { exploreFarms, SHARE_ERRORS } from '@/services/farmShare'
 import { syncStatus, syncFarmNow } from '@/services/farmSync'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
+import Leaderboard from './Leaderboard.vue'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['close'])
@@ -135,6 +136,8 @@ function visit(c) {
         <button type="submit" class="btn btn-primary" :disabled="cleanCode.length !== 6">Visit</button>
       </form>
     </section>
+
+    <Leaderboard :open="open" class="mt-5" />
 
     <section v-if="farm.state.neighbours.length" class="mt-5">
       <h3 class="eyebrow">Neighbours</h3>

@@ -126,6 +126,8 @@ export const DECOR = [
   { id: 'picnic', name: 'Picnic blanket', level: 9, price: 40, w: 2, h: 1, flat: true },
   { id: 'pond', name: 'Lily pond', level: 10, price: 80, w: 2, h: 2, flat: true },
   { id: 'gazebo', name: 'Gazebo', level: 12, price: 140, w: 2, h: 2 },
+  // never sold: a thank you for reaching the neighbourhood goal
+  { id: 'goldencan', name: 'Golden Watering Can', level: 1, price: 0, w: 1, h: 1, special: true },
 ]
 
 // ---- everything that can be placed on the map, by type ----

@@ -74,6 +74,17 @@ export const REMINDER_MESSAGES = [
 ]
 
 export const THIRSTY_REMINDERS = ['{name} is getting a little thirsty.', 'A sip of water would make {name} smile.']
+export const HARVEST_REMINDERS = ['Something on the farm is ready to pick 🧺', 'Your crops are ready. {name} can smell them from here!', 'The farm has a little harvest waiting for you.']
+
+// Lines that show Pip's personality (see utils/badges.js)
+export const TRAIT_MESSAGES = {
+  playful: ['Race you to the next game!', 'I bet I can beat you at Tac Toe.', 'Is it game time? Please say it’s game time.'],
+  cuddly: ['Can we just stay like this a while?', 'You’re my favourite person.', 'A pat and a drink, and I’m all set.'],
+  hardworking: ['I wonder how the carrots are doing.', 'The farm smells lovely today.', 'Shall we bake something later?'],
+  curious: ['Did you know I’m always learning?', 'Tell me something new today.', 'What’s your favourite fact?'],
+  calm: ['Let’s take a slow breath together.', 'It’s nice, just being here.', 'No rush. We have all day.'],
+  social: ['Have you visited a friend’s farm today?', 'I wonder what the neighbours are growing.', 'Sharing makes everything grow.'],
+}
 
 export function pick(list) {
   return list[Math.floor(Math.random() * list.length)]

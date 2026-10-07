@@ -94,6 +94,19 @@ function makeNotes(c) {
 // ---- timing ----
 let ac = null
 let t0 = 0
+// The game runs on its own clock, so it keeps going even if the phone holds back audio.
+// The music is lined up with it on the audio clock whenever audio is available.
+let pausedTotal = 0
+let hiddenAt = null
+const clock = () => performance.now() / 1000 - pausedTotal
+// the gap between the two clocks, only adjusted when it drifts noticeably (keeps the beat steady)
+let audioOffset = null
+function audioAt(gameTime) {
+  if (!ac) return 0
+  const gap = ac.currentTime - clock()
+  if (audioOffset === null || Math.abs(gap - audioOffset) > 0.05) audioOffset = gap
+  return gameTime + audioOffset
+}
 let notes = []
 let raf = null
 let scheduledBeat = 0
@@ -122,7 +135,6 @@ function begin() {
 
 function start() {
   ac = getAudio()
-  if (!ac) return
   counts.value = { caught: 0, miss: 0, stray: 0 }
   splashes = []
   combo.value = 0
@@ -130,11 +142,17 @@ function start() {
   judgements.value = []
   notes = makeNotes(cfg.value)
   endBeat = COUNT_IN + BARS * 4
-  t0 = ac.currentTime + 0.25
+  pausedTotal = 0
+  hiddenAt = null
+  audioOffset = null
+  t0 = clock() + 0.25
   scheduledBeat = 0
-  backing = ac.createGain()
-  backing.gain.value = pip.musicOn ? 1 : 0
-  backing.connect(buses().sfx)
+  backing = null
+  if (ac) {
+    backing = ac.createGain()
+    backing.gain.value = pip.musicOn ? 1 : 0
+    backing.connect(buses().sfx)
+  }
   phase.value = 'playing'
   resize()
   raf = requestAnimationFrame(loop)
@@ -152,7 +170,10 @@ function schedule(now) {
   const horizon = now + 0.25
   while (timeOf(scheduledBeat) < horizon && scheduledBeat <= endBeat + 2) {
     const b = scheduledBeat
-    const t = timeOf(b)
+    scheduledBeat++
+    // beats that slipped by (after a pause, or with no audio) are simply skipped
+    if (!backing || timeOf(b) < now - 0.05) continue
+    const t = audioAt(timeOf(b))
     if (b < COUNT_IN) {
       tok(backing, t, { pitch: b === 0 ? 1.5 : 1.25, vol: 0.06 })
     } else if (b < endBeat) {
@@ -172,12 +193,11 @@ function schedule(now) {
       bass(backing, midiToFreq(48), t, { vol: 0.12, decay: 2 })
       bell(backing, midiToFreq(84), t, { vol: 0.03, decay: 2.5 })
     }
-    scheduledBeat++
   }
 }
 
 function loop() {
-  const now = ac.currentTime
+  const now = clock()
   schedule(now)
   // drops that fell all the way down
   for (const n of notes) {
@@ -207,7 +227,7 @@ function dropAt(n, now) {
 function catchDrop(n, now) {
   const p = dropAt(n, now)
   n.done = 'caught'
-  if (pip.soundOn) kalimba(buses().sfx, midiToFreq(n.midi), ac.currentTime + 0.005, { vol: 0.1, decay: 1.2 })
+  if (pip.soundOn && ac) kalimba(buses().sfx, midiToFreq(n.midi), ac.currentTime + 0.005, { vol: 0.1, decay: 1.2 })
   haptic('light')
   splashes.push({ x: p.x, y: p.y, at: now, color: LANE_COLORS[n.lane] })
   judge('caught', p.x, p.y)
@@ -215,8 +235,8 @@ function catchDrop(n, now) {
 
 /** A tap at (x, y) on the sky catches the nearest falling drop under the finger. */
 function tapAt(x, y) {
-  if (phase.value !== 'playing' || !ac) return
-  const now = ac.currentTime
+  if (phase.value !== 'playing') return
+  const now = clock()
   const reach = Math.max(34, dropSize() * 2.3)
   let best = null
   let bestD = Infinity
@@ -233,7 +253,7 @@ function tapAt(x, y) {
   if (best && bestD <= reach) return catchDrop(best, now)
   counts.value = { ...counts.value, stray: counts.value.stray + 1 }
   combo.value = 0
-  if (pip.soundOn) tok(buses().sfx, ac.currentTime, { pitch: 0.6, vol: 0.03 })
+  if (pip.soundOn && ac) tok(buses().sfx, ac.currentTime, { pitch: 0.6, vol: 0.03 })
 }
 
 function onPointer(e) {
@@ -243,8 +263,8 @@ function onPointer(e) {
 
 /** Keyboard: D F J K catch the lowest drop in that column. */
 function hitLane(lane) {
-  if (phase.value !== 'playing' || !ac || lane >= lanes.value) return
-  const now = ac.currentTime
+  if (phase.value !== 'playing' || lane >= lanes.value) return
+  const now = clock()
   const live = notes.filter((n) => n.done === null && n.lane === lane && timeOf(n.beat) - now < travel())
   if (live.length) return catchDrop(live[0], now)
   counts.value = { ...counts.value, stray: counts.value.stray + 1 }
@@ -265,6 +285,20 @@ function judge(grade, x, y) {
   const id = ++jid
   judgements.value = [...judgements.value.slice(-3), { id, x, y, grade, text }]
   setTimeout(() => (judgements.value = judgements.value.filter((j) => j.id !== id)), 650)
+}
+
+// leaving the app mid song pauses it, instead of letting every drop fall
+function onVisibility() {
+  if (phase.value !== 'playing') return
+  if (document.hidden) {
+    hiddenAt = performance.now() / 1000
+    cancelAnimationFrame(raf)
+    raf = null
+  } else if (hiddenAt !== null) {
+    pausedTotal += performance.now() / 1000 - hiddenAt
+    hiddenAt = null
+    raf = requestAnimationFrame(loop)
+  }
 }
 
 function onKey(e) {
@@ -392,11 +426,13 @@ function leave() {
 onMounted(() => {
   window.addEventListener('keydown', onKey)
   window.addEventListener('resize', resize)
+  document.addEventListener('visibilitychange', onVisibility)
 })
 onBeforeUnmount(() => {
   leave()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('resize', resize)
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 
 </script>

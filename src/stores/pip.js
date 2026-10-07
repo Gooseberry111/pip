@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { getStorage } from '@/services/storage'
 import { ITEMS, DEFAULT_LOADOUT, MAX_DECORATIONS, PACKET_COST, itemsUnlockedAtLevel, packetItems, findItem } from '@/data/items'
 import { DAILY_TASKS, todayKey } from '@/data/daily'
-import { levelReward } from '@/data/games'
+import { levelReward } from '@/data/rewards'
 import { goalsForWeek, weekKey, GOAL_REWARD, BLOOM_BOX_PETALS } from '@/data/weekly'
 import { findMood } from '@/data/moods'
 import { factOrder, factSlot, findFact } from '@/data/facts'
@@ -41,6 +41,7 @@ const EQUIP_KEYS = {
   leaves: 'currentLeaf',
   flowers: 'currentFlower',
   backgrounds: 'currentBackground',
+  accessories: 'currentAccessory',
 }
 
 function freshDaily() {
@@ -95,6 +96,9 @@ function freshPip(now = Date.now()) {
     unlockedFlowers: [],
     unlockedDecorations: [],
     unlockedBackgrounds: ['windowsill'],
+    unlockedAccessories: [],
+    stats: {}, // everything ever done, for badges and Pip's personality
+    badges: [], // badge ids earned
     unseenItems: [],
     petals: 0,
     daily: freshDaily(),
@@ -114,6 +118,8 @@ function freshPip(now = Date.now()) {
     reminderTime: '19:00',
     checkinOn: true,
     drinks: { day: '', morning: false, afternoon: false, night: false }, // today's three drinks
+    calmMotion: false, // fewer animations
+    textSize: 'normal', // normal | large | larger
   }
 }
 
@@ -132,6 +138,10 @@ export const usePipStore = defineStore('pip', () => {
   const currentLeaf = ref(DEFAULT_LOADOUT.currentLeaf)
   const currentFlower = ref(DEFAULT_LOADOUT.currentFlower)
   const currentBackground = ref(DEFAULT_LOADOUT.currentBackground)
+  const currentAccessory = ref(null)
+  const unlockedAccessories = ref([])
+  const stats = ref({})
+  const badges = ref([])
   const currentDecorations = ref([])
   const unlockedPots = ref([])
   const unlockedLeaves = ref([])
@@ -157,6 +167,8 @@ export const usePipStore = defineStore('pip', () => {
   const reminderTime = ref('19:00')
   const checkinOn = ref(true)
   const drinks = ref({ day: '', morning: false, afternoon: false, night: false })
+  const calmMotion = ref(false)
+  const textSize = ref('normal')
 
   // ---- session-only state (not saved) ----
   const ready = ref(false)
@@ -165,14 +177,14 @@ export const usePipStore = defineStore('pip', () => {
 
   const fields = {
     plantName, growthLevel, growthProgress, health, waterLevel, lastWatered, lastUpdated, createdAt, startedAt,
-    currentPot, currentLeaf, currentFlower, currentBackground, currentDecorations,
-    unlockedPots, unlockedLeaves, unlockedFlowers, unlockedDecorations, unlockedBackgrounds,
+    currentPot, currentLeaf, currentFlower, currentBackground, currentDecorations, currentAccessory,
+    unlockedPots, unlockedLeaves, unlockedFlowers, unlockedDecorations, unlockedBackgrounds, unlockedAccessories, stats, badges,
     unseenItems, petals, daily, bestScores, levels, introSeen, journal, weekly, factsSeen, lastFactSlot, chat, deviceId,
-    soundOn, musicOn, hapticsOn, remindersOn, reminderTime, checkinOn, drinks,
+    soundOn, musicOn, hapticsOn, remindersOn, reminderTime, checkinOn, drinks, calmMotion, textSize,
   }
   const unlockedLists = {
     pots: unlockedPots, leaves: unlockedLeaves, flowers: unlockedFlowers,
-    decorations: unlockedDecorations, backgrounds: unlockedBackgrounds,
+    decorations: unlockedDecorations, backgrounds: unlockedBackgrounds, accessories: unlockedAccessories,
   }
 
   // ---- getters ----
@@ -264,6 +276,29 @@ export const usePipStore = defineStore('pip', () => {
     setSoundEnabled(soundOn.value)
     setMusicEnabled(musicOn.value)
     setHapticsEnabled(hapticsOn.value)
+    applyLook()
+  }
+
+  /** Calmer motion and text size live on the page itself. */
+  function applyLook() {
+    if (typeof document === 'undefined') return
+    const html = document.documentElement
+    const osCalm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    html.classList.toggle('calm-motion', calmMotion.value || osCalm)
+    html.classList.toggle('text-large', textSize.value === 'large')
+    html.classList.toggle('text-larger', textSize.value === 'larger')
+  }
+
+  function toggleCalmMotion() {
+    calmMotion.value = !calmMotion.value
+    applyLook()
+    save()
+  }
+
+  function setTextSize(size) {
+    textSize.value = ['normal', 'large', 'larger'].includes(size) ? size : 'normal'
+    applyLook()
+    save()
   }
 
   async function save() {
@@ -485,6 +520,21 @@ export const usePipStore = defineStore('pip', () => {
     return item
   }
 
+  /** A badge earned: petals, maybe something to wear, and a page in the journal. */
+  function awardBadge(badge) {
+    if (badges.value.includes(badge.id)) return null
+    badges.value = [...badges.value, badge.id]
+    petals.value += badge.petals
+    let item = null
+    if (badge.reward) {
+      item = findItem(badge.reward.category, badge.reward.id)
+      if (item) unlock({ ...item, category: badge.reward.category })
+    }
+    addJournal({ type: 'badge', title: `Earned “${badge.name}”`, text: badge.text })
+    save()
+    return { petals: badge.petals, item: item ? { ...item, category: badge.reward.category } : null }
+  }
+
   /** Buy one of Pip's looks from the shop. */
   function buyItem(category, id) {
     const item = findItem(category, id)
@@ -550,6 +600,7 @@ export const usePipStore = defineStore('pip', () => {
         pot: currentPot.value,
         leaf: currentLeaf.value,
         flower: currentFlower.value,
+        accessory: currentAccessory.value,
       },
       ...entry,
     }
@@ -570,6 +621,7 @@ export const usePipStore = defineStore('pip', () => {
 
   // ---- talking to Pip ----
   function addChat(role, text) {
+    if (role === 'user') stats.value = { ...stats.value, chat: (stats.value.chat ?? 0) + 1 }
     chat.value = [...chat.value, { role, text, at: Date.now() }].slice(-CHAT_LIMIT)
     save()
   }
@@ -607,6 +659,7 @@ export const usePipStore = defineStore('pip', () => {
   // ---- weekly goals ----
   function track(event, amount = 1) {
     ensureToday()
+    stats.value = { ...stats.value, [event]: (stats.value[event] ?? 0) + amount }
     const progress = { ...weekly.value.progress, [event]: (weekly.value.progress[event] ?? 0) + amount }
     weekly.value = { ...weekly.value, progress }
   }
@@ -694,6 +747,8 @@ export const usePipStore = defineStore('pip', () => {
       toggleDecoration(id)
     } else if (category === 'flowers' && currentFlower.value === id) {
       currentFlower.value = null // tapping the worn flower takes it off
+    } else if (category === 'accessories' && currentAccessory.value === id) {
+      currentAccessory.value = null // and the same for accessories
     } else {
       fields[EQUIP_KEYS[category]].value = id
     }
@@ -801,6 +856,8 @@ export const usePipStore = defineStore('pip', () => {
     await getStorage().clear()
     try {
       localStorage.removeItem('pip:farm:v1')
+      // forget the backup code here, so a fresh seed never overwrites the old backup
+      localStorage.removeItem('pip:backup:v1')
     } catch {
       // ignore
     }
@@ -817,9 +874,9 @@ export const usePipStore = defineStore('pip', () => {
     weeklyGoals, weeklyClaimable, hoursToThirsty, nextFact, factWaiting, currentSlot, slotNow, drinksToday, drinkWaiting, asleep,
     allItems: ITEMS,
     isUnlocked, isEquipped, isTaskDone,
-    load, save, catchUp, water, giveWater, feed, bonusGrowth, takeDrink, unlock, buyItem, equip, wear, markSeen, markCategorySeen, start, rename, toggleSound,
+    load, save, catchUp, water, giveWater, feed, bonusGrowth, takeDrink, unlock, buyItem, awardBadge, equip, wear, markSeen, markCategorySeen, start, rename, toggleSound,
     earn, completeTask, claimGift, openPacket, recordScore, levelProgress, totalStars, completeLevel, spendPetals, markIntroSeen, finishRound,
-    toggleMusic, toggleHaptics, toggleCheckin, setReminders,
+    toggleMusic, toggleHaptics, toggleCheckin, setReminders, toggleCalmMotion, setTextSize,
     addJournal, logMood, skipCheckin, track, claimGoal, claimBloomBox, readFact, addChat, clearChat,
     clearWelcome, clearCelebration, queueCelebration,
     devPassTime, devGrow, devPetals, devReset,

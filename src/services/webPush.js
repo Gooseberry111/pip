@@ -20,6 +20,20 @@ export function isInstalled() {
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return
   navigator.serviceWorker.register('./sw.js').catch(() => {})
+  // tell the service worker which app files have loaded, so they're saved for offline use
+  // (now, and again later to catch games and screens that load in the background)
+  const share = () =>
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        const urls = performance
+          .getEntriesByType('resource')
+          .map((e) => e.name)
+          .filter((u) => u.startsWith(location.origin) && u.includes('/assets/'))
+        reg.active?.postMessage({ type: 'cache-urls', urls: [...new Set(urls)] })
+      })
+      .catch(() => {})
+  setTimeout(share, 4000)
+  setTimeout(share, 30000)
 }
 
 function base64ToBytes(base64) {
@@ -45,6 +59,7 @@ function payload(subscription, schedule) {
     time: schedule.time,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     thirstyAt: schedule.hoursUntilThirsty > 0.5 ? Date.now() + schedule.hoursUntilThirsty * 3600 * 1000 : null,
+    farmReadyAt: schedule.farmReadyAt ?? null,
     lastVisit: localDate(),
   }
 }

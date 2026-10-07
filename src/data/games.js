@@ -192,10 +192,7 @@ export function starRating({ heartsLost = 0, timeLeft = 1, mistakesOk = true } =
 
 export const THREE_STAR_TIP = '3 stars: no mistakes and time to spare'
 
-/** Petals for finishing a level: a bigger thank you the first time, a little after that. */
-export function levelReward(level, { firstClear, newStars }) {
-  return (firstClear ? 3 + Math.min(level, 12) * 2 : 1) + Math.max(0, newStars)
-}
+export { levelReward } from './rewards'
 
 // ---- Bloom Burst (match 3) ----
 // goal: { type: 'score', target } | { type: 'collect', items: { daisy: 15 } } | { type: 'mud' }

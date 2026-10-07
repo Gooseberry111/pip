@@ -38,6 +38,7 @@ export default async (req) => {
     time: TIME.test(body.time) ? body.time : '19:00',
     timeZone: typeof body.timeZone === 'string' ? body.timeZone.slice(0, 64) : 'UTC',
     thirstyAt: Number.isFinite(body.thirstyAt) ? body.thirstyAt : null,
+    farmReadyAt: Number.isFinite(body.farmReadyAt) ? body.farmReadyAt : null,
     lastVisit: typeof body.lastVisit === 'string' ? body.lastVisit.slice(0, 10) : existing.lastVisit,
     updatedAt: Date.now(),
   }

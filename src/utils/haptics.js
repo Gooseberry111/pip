@@ -23,6 +23,8 @@ export function haptic(kind = 'light') {
       if (kind === 'error') return Haptics.notification({ type: NotificationType.Warning })
       return Haptics.impact({ style: kind === 'soft' ? ImpactStyle.Medium : ImpactStyle.Light })
     }
+    // browsers only allow vibrating after the first tap
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return
     navigator.vibrate?.(WEB_PATTERNS[kind] ?? 8)
   } catch {
     // Haptics are a nice extra.

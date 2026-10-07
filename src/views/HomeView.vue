@@ -1,11 +1,12 @@
 <script setup>
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { useFarmStore } from '@/stores/farm'
 import { DRINK_SLOTS } from '@/utils/plantLogic'
 import { GOODS } from '@/data/farm'
 import GoodIcon from '@/components/farm/GoodIcon.vue'
+import { personality } from '@/utils/badges'
 import { getDayPhase, getGreeting, daysTogether } from '@/utils/timeOfDay'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
@@ -20,6 +21,7 @@ import {
   AWAY_GROWTH_MESSAGE,
   GENTLE_MESSAGES,
   TAP_MESSAGES,
+  TRAIT_MESSAGES,
   PET_MESSAGES,
   WAKE_MESSAGES,
   SLEEP_MESSAGE,
@@ -35,17 +37,18 @@ import HomeStage from '@/components/HomeStage.vue'
 import GiftBox from '@/components/GiftBox.vue'
 import WaterButton from '@/components/WaterButton.vue'
 import GrowthProgress from '@/components/GrowthProgress.vue'
-import LevelUpMoment from '@/components/LevelUpMoment.vue'
+// these open later, so they load just after Home appears
+const LevelUpMoment = defineAsyncComponent(() => import('@/components/LevelUpMoment.vue'))
 import WaterDrops from '@/components/WaterDrops.vue'
 import Sparkles from '@/components/Sparkles.vue'
 import Floaters from '@/components/Floaters.vue'
 import PetalBadge from '@/components/PetalBadge.vue'
 import DecorationArt from '@/components/art/DecorationArt.vue'
 import Icon from '@/components/Icon.vue'
-import SettingsSheet from '@/components/SettingsSheet.vue'
-import MoodCheckin from '@/components/MoodCheckin.vue'
-import FactCard from '@/components/FactCard.vue'
-import ChatSheet from '@/components/ChatSheet.vue'
+const SettingsSheet = defineAsyncComponent(() => import('@/components/SettingsSheet.vue'))
+const MoodCheckin = defineAsyncComponent(() => import('@/components/MoodCheckin.vue'))
+const FactCard = defineAsyncComponent(() => import('@/components/FactCard.vue'))
+const ChatSheet = defineAsyncComponent(() => import('@/components/ChatSheet.vue'))
 
 const pip = usePipStore()
 const farm = useFarmStore()
@@ -92,7 +95,7 @@ function closeChat() {
   else router.replace({ query: {} })
 }
 
-// Did you know? A new fact every few hours.
+// Did you know? A new fact each morning and evening.
 const shownFact = ref(null)
 
 function openFact() {
@@ -136,7 +139,6 @@ const DRINK_THANKS = {
   afternoon: 'Just what I needed this afternoon.',
   night: 'A cosy drink before bed. Thank you!',
 }
-const DRINK_ICONS = { morning: '🌅', afternoon: '☀️', night: '🌙' }
 const drinkLabel = computed(() =>
   DRINK_SLOTS.map((s) => `${s.label}: ${pip.drinksToday[s.id] ? 'had a drink' : 'not yet'}`).join(', '),
 )
@@ -318,7 +320,10 @@ function onTapPip() {
   haptic('light')
   pipRef.value?.react('wiggle')
   floaters.value?.spawn({ x: 50 + (Math.random() * 20 - 10), y: 40, kind: 'heart' })
-  say(Math.random() < 0.25 ? pick(GENTLE_MESSAGES) : pick(TAP_MESSAGES), 3500)
+  const traits = personality(pip).traits
+  const roll = Math.random()
+  if (traits.length && roll < 0.3) say(pick(TRAIT_MESSAGES[traits[Math.floor(Math.random() * traits.length)].id]), 3800)
+  else say(roll < 0.5 ? pick(GENTLE_MESSAGES) : pick(TAP_MESSAGES), 3500)
   later(() => showPetals(pip.completeTask('pet'), { x: 60, y: 30 }), 400)
 }
 
@@ -416,7 +421,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="mx-auto flex h-dvh w-full max-w-md flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
+  <section class="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
     <!-- top bar -->
     <div class="flex items-center justify-between px-1 pt-1">
       <PipLogo :size="28" />
@@ -474,10 +479,21 @@ onBeforeUnmount(() => {
           <span
             v-for="s in DRINK_SLOTS"
             :key="s.id"
-            class="drink relative flex h-5 w-5 items-center justify-center rounded-full text-[0.7rem] leading-none"
+            class="drink relative flex h-5 w-5 items-center justify-center rounded-full"
             :class="{ 'is-done': pip.drinksToday[s.id], 'is-now': pip.slotNow.slot === s.id && !pip.drinksToday[s.id] }"
           >
-            {{ DRINK_ICONS[s.id] }}
+            <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
+              <template v-if="s.id === 'morning'">
+                <path d="M3 14 H17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                <path d="M5.5 14 A4.5 4.5 0 0 1 14.5 14Z" fill="#F2B544" />
+                <path d="M10 5.5 V7.5 M4.5 8 L5.8 9.2 M15.5 8 L14.2 9.2" stroke="#F2B544" stroke-width="1.5" stroke-linecap="round" />
+              </template>
+              <template v-else-if="s.id === 'afternoon'">
+                <circle cx="10" cy="10" r="4" fill="#F2C66B" />
+                <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" stroke="#F2C66B" stroke-width="1.5" stroke-linecap="round" />
+              </template>
+              <path v-else d="M14.5 13.2A6 6 0 0 1 7 4.5a6 6 0 1 0 7.5 8.7Z" fill="#8E9AB4" />
+            </svg>
             <span v-if="pip.drinksToday[s.id]" class="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-water-400 text-[0.4rem] text-white">✓</span>
           </span>
         </span>
@@ -538,6 +554,7 @@ onBeforeUnmount(() => {
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
+          :accessory="pip.currentAccessory"
           :sleeping="asleepNow"
           :wet="wet"
           class="h-full w-full"
@@ -605,7 +622,8 @@ onBeforeUnmount(() => {
 }
 .drink {
   filter: grayscale(1);
-  opacity: 0.45;
+  opacity: 0.4;
+  color: var(--color-bark-300);
 }
 .drink.is-done {
   filter: none;

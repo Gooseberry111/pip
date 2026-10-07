@@ -61,7 +61,7 @@ const working = computed(() => props.busy || (props.obj.readyAt && props.now < p
           <path d="M0 -2 C-2 -6 -6 -6 -6 -4 C-5 -1 -2 -1 0 -2Z M0 -3 C2 -7 6 -7 6 -5 C5 -2 2 -2 0 -3Z" fill="#9CC584" />
         </g>
       </g>
-      <g v-else>
+      <g v-else-if="stage >= 2">
         <!-- grain: wheat -->
         <g v-if="family === 'grain'">
           <g v-for="(x, i) in [9, 15, 21, 27, 32]" :key="i">
@@ -397,6 +397,16 @@ const working = computed(() => props.busy || (props.obj.readyAt && props.now < p
         <path :d="`M${l[0]} ${l[1]} m-${l[2]} 0 a${l[2]} ${l[2] * 0.7} 0 1 0 ${l[2] * 2} 0 L${l[0]} ${l[1]}Z`" fill="#7FAA5C" />
       </g>
       <g transform="translate(52 34)"><circle v-for="a in [0, 72, 144, 216, 288]" :key="a" cx="0" cy="-2.5" r="1.8" fill="#F6C7CD" :transform="`rotate(${a})`" /></g>
+    </g>
+    <g v-else-if="type === 'goldencan'">
+      <ellipse cx="20" cy="37" rx="12" ry="2.6" fill="#4F6B3E" opacity="0.25" />
+      <rect x="14" y="30" width="12" height="7" rx="1.5" fill="#B9927A" />
+      <circle cx="20" cy="12" r="13" fill="#FBE3A0" opacity="0.35" />
+      <path d="M10 14 H26 L24 30 H12Z" fill="#F2C66B" stroke="#C9952F" stroke-width="1.4" stroke-linejoin="round" />
+      <path d="M26 17 L35 9 L37 11 L28 20" fill="#F2C66B" stroke="#C9952F" stroke-width="1.3" stroke-linejoin="round" />
+      <path d="M12 12 Q18 2 25 12" stroke="#C9952F" stroke-width="2" fill="none" stroke-linecap="round" />
+      <path d="M14 18 H22" stroke="#FFF3C4" stroke-width="2" stroke-linecap="round" />
+      <circle cx="36" cy="6" r="1.4" fill="#fff" /><circle cx="6" cy="10" r="1.2" fill="#fff" />
     </g>
     <g v-else-if="type === 'gazebo'">
       <ellipse cx="40" cy="70" rx="34" ry="8" fill="#E6DCCB" />

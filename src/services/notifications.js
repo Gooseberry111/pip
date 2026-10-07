@@ -5,11 +5,12 @@
 // Inside the phone app (Capacitor) the phone schedules them itself.
 // As an installed web app (Home Screen), they come by web push from a Netlify function.
 import { Capacitor } from '@capacitor/core'
-import { REMINDER_MESSAGES, THIRSTY_REMINDERS, pick } from '@/data/messages'
+import { REMINDER_MESSAGES, THIRSTY_REMINDERS, HARVEST_REMINDERS, pick } from '@/data/messages'
 import { webPushAvailable, isIOS, isInstalled, enableWebPush, syncWebPush, disableWebPush } from './webPush'
 
 const DAILY_ID = 101
 const THIRSTY_ID = 102
+const HARVEST_ID = 103
 const QUIET_FROM = 22 // no nudges between 10pm…
 const QUIET_UNTIL = 8 // …and 8am
 
@@ -90,18 +91,18 @@ let syncTimer = null
  * Bring reminders up to date with Pip (time, name, when Pip gets thirsty).
  * @param {{ enabled: boolean, time: string, name: string, hoursUntilThirsty: number }} options
  */
-export async function scheduleReminders({ enabled, time = '19:00', name = 'Pip', hoursUntilThirsty = 0 }) {
+export async function scheduleReminders({ enabled, time = '19:00', name = 'Pip', hoursUntilThirsty = 0, farmReadyAt = null }) {
   if (!native()) {
     // web: share the latest schedule with the server (gathered up so several changes send once)
     if (!enabled || !webPushAvailable()) return
     clearTimeout(syncTimer)
-    syncTimer = setTimeout(() => syncWebPush({ time, name, hoursUntilThirsty }), 800)
+    syncTimer = setTimeout(() => syncWebPush({ time, name, hoursUntilThirsty, farmReadyAt }), 800)
     return
   }
 
   const ln = await getPlugin()
   try {
-    await ln.cancel({ notifications: [{ id: DAILY_ID }, { id: THIRSTY_ID }] })
+    await ln.cancel({ notifications: [{ id: DAILY_ID }, { id: THIRSTY_ID }, { id: HARVEST_ID }] })
     if (!enabled) return
     const [hour, minute] = time.split(':').map(Number)
     const notifications = [
@@ -118,6 +119,14 @@ export async function scheduleReminders({ enabled, time = '19:00', name = 'Pip',
         title: name,
         body: withName(pick(THIRSTY_REMINDERS), name),
         schedule: { at: gentleTime(Date.now() + hoursUntilThirsty * 3600 * 1000), allowWhileIdle: true },
+      })
+    }
+    if (farmReadyAt && farmReadyAt > Date.now() + 2 * 60 * 1000) {
+      notifications.push({
+        id: HARVEST_ID,
+        title: name,
+        body: withName(pick(HARVEST_REMINDERS), name),
+        schedule: { at: gentleTime(farmReadyAt), allowWhileIdle: true },
       })
     }
     await ln.schedule({ notifications })

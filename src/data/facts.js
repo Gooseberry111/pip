@@ -2,7 +2,9 @@
 // Facts are kept simple and accurate (popular myths are left out on purpose).
 // A new one is ready every few hours; read ones collect in the Fact book.
 
-export const FACT_EVERY_HOURS = 3
+// Two facts a day: a new one at 6am and another at 6pm, local time.
+export const FACT_EVERY_HOURS = 12
+const FACT_START_HOUR = 6
 
 export const FACTS = [
   // ---- plants ----
@@ -106,5 +108,7 @@ export function findFact(id) {
 
 /** Which 3 hour window we're in. A new fact unlocks each window. */
 export function factSlot(now = Date.now()) {
-  return Math.floor(now / (FACT_EVERY_HOURS * 3600 * 1000))
+  // count in the person's own time, so the new fact arrives at 6am and 6pm where they are
+  const local = now - new Date(now).getTimezoneOffset() * 60 * 1000
+  return Math.floor((local - FACT_START_HOUR * 3600 * 1000) / (FACT_EVERY_HOURS * 3600 * 1000))
 }

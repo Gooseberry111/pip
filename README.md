@@ -24,15 +24,53 @@ npx cap open android
 
 **Home.** Pip sits on a little shelf under a sky that follows the real time of day (dawn, day, dusk and a starry night with fireflies). Pip's eyes follow your finger. Tap Pip to say hi, or stroke it back and forth to pet it. Pip falls asleep if left alone for a while. Each day a small gift waits on the shelf.
 
+**Drink times.** Pip wants a drink in the morning (5am to noon), the afternoon (noon to 6pm) and at night (6pm to 5am). The first watering in each drink time is a proper drink: 2 petals and a little growth, and all three in one day is a perfect day (5 more petals and extra growth). A small morning, afternoon and night tracker sits on Home. Awake, a full Pip gets thirsty again after about 7 hours, so each drink time matters; asleep (10pm to 7am) Pip drinks very slowly, so nobody wakes up to a wilted plant. Pip sleeps at night and wakes for a little while if you tap. Rules live in `src/utils/plantLogic.js`.
+
+**The farm.** A second home for Pip, on its own tab (`src/views/FarmView.vue`, rules in `src/stores/farm.js` and `src/utils/farmLogic.js`, all numbers in `src/data/farm.js`).
+* *Plots and crops*: 12 crops from wheat (1 minute) to roses (6 hours), each unlocked at a farm level, with its own growing time, harvest size and price. Planting costs a few petals (wheat is free). Water a growing crop once to make it 15% quicker, or use fertiliser to halve the time left. "Harvest everything" picks all that's ready.
+* *Trees*: apple, cherry, orange, peach and lemon. Planted once, they fruit again and again.
+* *Animals and buildings*: a chicken coop (feed wheat, get eggs), a beehive (honey on its own), a windmill (wheat into flour) and a cow shed (feed corn, get milk).
+* *The barn* stores everything (60 spaces to start, upgradable). Sell at the market for petals, or give things to Pip.
+* *The kitchen*: 20 recipes, from carrot soup to rose cake, each with a cooking time. Dishes sell for half again their ingredients, fill the best orders and make the best treats for Pip (treats help Pip grow). More stoves in the shop.
+* *The order board*: critter neighbours (Bun the bunny, Hazel the hedgehog, Bramble the badger and friends) ask for things and pay well in petals and farm XP. A new order arrives a while after each one is filled.
+* *Pip's daily wish*: one thing from the farm Pip would love today, shown on Home and the farm. Granting it gives petals and growth.
+* *Farm levels* (XP from harvesting, cooking and orders) unlock crops, trees, buildings, recipes, decorations and more land, with a celebration listing what's new.
+* *Arrange*: drag anything to move it, put things away, and place what you buy. Land grows from 8 x 10 tiles to 8 x 18.
+* *Collections*: everything grown or gathered fills the Harvest almanac, and every dish the Recipe book (Collection tab).
+
+**Visiting friends.** Turn on "Let friends visit" (the people button on the farm) and your farm gets a 6 character code and a link to share. Friends can visit by code, from their list of neighbours, or through Explore (if you choose to be listed). Visitors can water up to 5 of your growing crops a day, which makes them grow quicker, and earn a petal for each. You'll see a note when friends have helped. Shared farms are stored in Netlify Blobs by `netlify/functions/farm.mjs`; only the layout, crops, farm name and plant name are shared, the owner's key is kept as a hash so nobody else can change a farm, and unkind names are refused. It needs nothing extra to set up beyond deploying to Netlify.
+
+**Backups.** Settings has "Keep a backup": Pip, the farm and the journal (not chats) are saved online every few minutes under a private 12 character code, which only you see. On a new phone, "Restore from a code" brings everything back. Stored in Netlify Blobs by `netlify/functions/backup.mjs` (the code is kept only as a hash); nothing to set up. Starting over never overwrites an old backup.
+
+**Farm tour.** New farmers get a six step tour from Pip: plant wheat, pick it, see the order board, peek in the kitchen and try arranging, with the right things gently highlighted. It moves on by itself as you do each step, can be skipped, and pays 10 petals at the end (`src/components/farm/FarmTour.vue`).
+
+**Playing together.**
+* *Gifts*: when visiting a shared farm, send something from your barn (up to three gifts per friend a day). It lands in their barn with a note saying who it's from.
+* *Neighbours' leaderboard*: in the friends sheet, see this week's harvests, orders and game stars for you and the neighbours you've visited.
+* *Neighbourhood goal*: every filled order, from everyone, counts towards one goal each week (shown on the order board). The goal grows with the number of farmers taking part. When it's reached, everyone collects 30 petals, and the first time, a Golden Watering Can for the farm. Counted by `netlify/functions/community.mjs`.
+
+**Pip's own style and story.**
+* *Accessories*: glasses, a bow tie, a ribbon bow, freckles and a cosy scarf from the shop, plus a chef's beret, heart glasses and a flower crown earned through badges. Pip wears them everywhere, friends see them on your farm, and they're in the Collection (`src/components/art/AccessoryArt.vue`).
+* *Badges*: 24 milestones across caring, the farm, friends and games (`src/data/badges.js`), each paying petals, some unlocking an accessory. They're awarded the moment they're earned with a little celebration, and live in the Collection's Badges tab and the journal.
+* *Personality*: Pip grows a character from what you do together: playful, cuddly, green fingered, curious, calm or friendly (`src/utils/badges.js`). It shows in the Badges tab, and Pip now and then says things that are very them when you tap.
+
+**Comfort and speed.**
+* *Calmer motion* (Settings) turns off decorative animation. It also switches on by itself when the phone's own Reduce Motion setting is on.
+* *Text size* (Settings): Normal, Large or Larger. Everything is sized in rem, so the whole app grows together, and Home scrolls when it needs to.
+* *Works offline*: the service worker (`public/sw.js`) keeps a copy of the app. Pages are fetched fresh when online (so updates arrive straight away) and the saved copy is used offline. Online features (chat AI, backups, visiting) simply wait for a connection.
+* *Quick to open*: each game, and the chat, settings and check-in sheets, load only when needed. The rest of the games are fetched quietly in the background once the Play tab is idle.
+
+**The shop.** Spend petals on the farm (plots, land, a bigger barn, stoves, fertiliser), trees and animals, 19 decorations (paths, fences, flower beds, a gnome, a lily pond, a gazebo and more), and 12 new looks for Pip that are only found here. A different deal every day.
+
 **Levels.** Home always shows Pip's level and stage (for example "Level 3 · Small Pip") and how close the next level is. Every new level opens a celebration showing what it unlocked, with a "Try it on" button for each item and a peek at what the next level brings.
 
 **Daily check-in.** Once a day Pip asks how you are (Great, Good, Okay, Low, Tough), answers kindly, and lets you jot an optional note. On a low or tough day it gently offers a minute of breathing together. Always skippable, and can be turned off in Settings.
 
 **Pip's journal.** A scrapbook that fills itself: planting day, every level and stage (with a snapshot of how Pip looked), treasures found, bloom boxes, first game clears, day milestones (7, 30, 100, 365) and your check-ins with notes. Open it from the book button on Home.
 
-**Weekly goals.** Three small goals each week (water, stars, game rounds, breathing, saying hi, check-ins, gifts), picked fresh every Monday. Each pays 6 petals; collecting all three opens the bloom box: 25 petals and a rare treasure.
+**Weekly goals.** Three small goals each week (water, stars, game rounds, breathing, saying hi, check-ins, gifts, harvests, cooking, orders, drink times, perfect days, wishes), picked fresh every Monday. Each pays 6 petals; collecting all three opens the bloom box: 25 petals and a rare treasure.
 
-**Did you know?** A new fact every 3 hours: around 60 short, accurate facts about plants, nature, water and wellbeing, plus gentle thoughts from Pip (`src/data/facts.js`). A chip appears on Home when one is waiting (the first read of each is worth a petal), read facts collect in the journal's Fact book, and some daily reminders arrive as a fun fact.
+**Did you know?** Two new facts a day (6am and 6pm, local time): around 60 short, accurate facts about plants, nature, water and wellbeing, plus gentle thoughts from Pip (`src/data/facts.js`). A chip appears on Home when one is waiting (the first read of each is worth a petal), read facts collect in the journal's Fact book, and some daily reminders arrive as a fun fact.
 
 **Talk to Pip.** A short, warm chat with your plant, free by default.
 * *Pip's own brain* (`src/utils/pipBrain.js`): built in, free, private and offline. It recognises what a message is about (greetings, feelings, stress, facts, jokes, sleep, games and more) and answers with hand-written replies that use Pip's real state.
@@ -41,7 +79,7 @@ npx cap open android
 
 Pip never claims to be a person or a counsellor. If a message suggests someone may be in danger, the app shows real helplines (`src/utils/safety.js`) whatever the reply says. Chats are saved on the phone.
 
-**Gentle reminders.** An optional daily hello at a time you choose (skipped if you've already visited that day), plus a one-off nudge timed for when Pip will actually get thirsty. Never between 10pm and 8am, never guilt-based.
+**Gentle reminders.** An optional daily hello at a time you choose (skipped if you've already visited that day), a nudge timed for when Pip will actually get thirsty, and one when something on the farm is ready to pick. Never between 10pm and 8am, never guilt-based.
 * *Installed web app* (iPhone Home Screen, iOS 16.4+, or Chrome on Android): web push. The app shares its reminder settings with Netlify functions in `netlify/functions`, stored in Netlify Blobs, and `push-send` runs every 15 minutes to send what's due. The service worker is `public/sw.js`.
 * *Capacitor phone app*: the phone schedules them itself with `@capacitor/local-notifications`.
 
@@ -121,7 +159,9 @@ src/
     notifications.js  gentle reminders (native app or web push)
     webPush.js  web push subscription for the installed web app
 netlify/
-  functions/    chat (talk to Pip), push-key, push-subscribe, push-unsubscribe, push-send (every 15 minutes)
+  functions/    chat (talk to Pip), farm (shared farms, visits, gifts, leaderboard), backup, community,
+                push-key, push-subscribe,
+                push-unsubscribe, push-send (every 15 minutes)
   lib/push.mjs  shared helpers, including the "what's due?" rules
   stores/       pip.js: the Pinia store (state, time catch up, petals, unlocks)
   utils/        plantLogic.js (pure rules), audio.js, synth.js, sound.js, music.js, haptics.js, timeOfDay.js, shapes.js

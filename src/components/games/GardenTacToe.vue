@@ -415,6 +415,7 @@ onBeforeUnmount(() => timers.forEach(clearTimeout))
               :pot="pip.currentPot"
               :leaf="pip.currentLeaf"
               :flower="pip.currentFlower"
+              :accessory="pip.currentAccessory"
               :interactive="false"
               :idle="thinking"
               class="h-full w-full"

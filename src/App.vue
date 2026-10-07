@@ -3,10 +3,15 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { usePipStore } from '@/stores/pip'
 import { useFarmStore } from '@/stores/farm'
 import { startFarmSync } from '@/services/farmSync'
+import { startBackups } from '@/services/backup'
+import { startCommunity } from '@/services/community'
+import { GOODS } from '@/data/farm'
 import { playSound } from '@/utils/sound'
 import { wakeMusic } from '@/utils/music'
 import { scheduleReminders } from '@/services/notifications'
 import BottomNavigation from '@/components/BottomNavigation.vue'
+import BadgeEarned from '@/components/BadgeEarned.vue'
+import { badgeList } from '@/utils/badges'
 import Onboarding from '@/components/Onboarding.vue'
 
 const pip = usePipStore()
@@ -21,6 +26,32 @@ const badges = computed(() => ({
   '/farm': farm.readyCount > 0 || farm.ordersReady > 0,
 }))
 
+// badges: award each one as it's earned, and show them one at a time
+const badgeShown = ref(null)
+const badgeQueue = []
+let badgeTimer = null
+const readyBadges = computed(() => (pip.hasStarted ? badgeList(pip, farm).filter((b) => b.ready) : []))
+watch(
+  readyBadges,
+  (list) => {
+    for (const b of list) {
+      const gift = pip.awardBadge(b)
+      // a few celebrations in a row at most; the rest are awarded quietly (they're in the journal)
+      if (gift && badgeQueue.length < 3) badgeQueue.push({ ...b, gift })
+    }
+    if (!badgeShown.value && badgeQueue.length && !badgeTimer) badgeTimer = setTimeout(showNextBadge, 1200)
+  },
+  { immediate: true },
+)
+function showNextBadge() {
+  badgeTimer = null
+  if (!badgeShown.value && badgeQueue.length) badgeShown.value = badgeQueue.shift()
+}
+function closeBadge() {
+  badgeShown.value = null
+  if (badgeQueue.length && !badgeTimer) badgeTimer = setTimeout(showNextBadge, 500)
+}
+
 // friends watered our crops while we were away
 const helpNote = ref('')
 function onHelps(helps) {
@@ -28,6 +59,14 @@ function onHelps(helps) {
   const who = names.length === 1 ? names[0] : `${names.length} friends`
   helpNote.value = `${who} watered ${helps.length} of your crops 💧`
   setTimeout(() => (helpNote.value = ''), 5000)
+}
+function onGifts(gifts) {
+  const g = gifts[0]
+  const more = gifts.length > 1 ? ` and ${gifts.length - 1} more` : ''
+  setTimeout(() => {
+    helpNote.value = `${g.from} sent you ${g.n} ${GOODS[g.good]?.name.toLowerCase() ?? 'treats'}${more} 🎁`
+    setTimeout(() => (helpNote.value = ''), 5000)
+  }, helpNote.value ? 5200 : 0)
 }
 
 // Reschedule gentle reminders whenever something they depend on changes.
@@ -71,7 +110,9 @@ function checkIn() {
 onMounted(() => {
   interval = setInterval(checkIn, 60 * 1000)
   farmClock = setInterval(() => farm.tick(), 1000)
-  farmSync = startFarmSync(farm, { onHelps })
+  farmSync = startFarmSync(farm, { onHelps, onGifts })
+  startCommunity(pip.deviceId)
+  startBackups()
   document.addEventListener('visibilitychange', checkIn)
   document.addEventListener('click', onTap, true)
   document.addEventListener('pointerdown', wakeMusic, { once: true })
@@ -102,6 +143,7 @@ onBeforeUnmount(() => {
         <p class="rounded-full bg-water-500 px-4 py-2 text-sm font-bold text-white shadow-float">{{ helpNote }}</p>
       </div>
     </Transition>
+    <BadgeEarned :badge="badgeShown" @close="closeBadge" />
     <Transition name="onboarding">
       <Onboarding v-if="onboarding" @done="onboarding = false" />
     </Transition>

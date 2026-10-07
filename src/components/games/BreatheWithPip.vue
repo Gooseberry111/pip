@@ -84,6 +84,7 @@ onBeforeUnmount(() => clearTimeout(timer))
             :pot="pip.currentPot"
             :leaf="pip.currentLeaf"
             :flower="pip.currentFlower"
+            :accessory="pip.currentAccessory"
             :calm="state !== 'done'"
             :interactive="false"
             :idle="false"

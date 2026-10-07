@@ -33,6 +33,14 @@ export function helpFarm({ code, uid, from }) {
   return call('/api/farm/help', { method: 'POST', body: JSON.stringify({ code, uid, from }) })
 }
 
+export function sendGift({ code, from, good, n }) {
+  return call('/api/farm/gift', { method: 'POST', body: JSON.stringify({ code, from, good, n }) })
+}
+
+export function fetchBoard(codes) {
+  return call(`/api/farm/board?codes=${encodeURIComponent(codes.join(','))}`)
+}
+
 export function exploreFarms() {
   return call('/api/farm/explore')
 }

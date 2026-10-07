@@ -70,6 +70,26 @@
     min-height: 100dvh;
   }
 
+  /* text size (Settings): everything is sized in rem, so it all grows together */
+  html.text-large {
+    font-size: 112.5%;
+  }
+  html.text-larger {
+    font-size: 125%;
+  }
+
+  /* calmer motion (Settings, or the phone's own Reduce Motion): no decorative animation */
+  html.calm-motion *,
+  html.calm-motion *::before,
+  html.calm-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
   button {
     cursor: pointer;
     touch-action: manipulation;

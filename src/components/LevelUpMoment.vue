@@ -115,6 +115,7 @@ function close() {
             :pot="pip.currentPot"
             :leaf="pip.currentLeaf"
             :flower="pip.currentFlower"
+            :accessory="pip.currentAccessory"
             :interactive="false"
             :idle="false"
             class="pip-pop h-full w-full"

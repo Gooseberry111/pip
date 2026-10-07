@@ -301,6 +301,7 @@ const lastSquares = computed(() => (lastMove.value ? new Set([lastMove.value.fro
               :pot="pip.currentPot"
               :leaf="pip.currentLeaf"
               :flower="pip.currentFlower"
+              :accessory="pip.currentAccessory"
               :interactive="false"
               :idle="thinking"
               class="h-full w-full"

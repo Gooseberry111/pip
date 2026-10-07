@@ -5,6 +5,8 @@ import { ref, computed } from 'vue'
 import { createLocalStorageAdapter } from '@/services/storage/localStorageAdapter'
 import { usePipStore } from '@/stores/pip'
 import { todayKey } from '@/data/daily'
+import { weekKey } from '@/data/weekly'
+import { countOrder, COMMUNITY_REWARD } from '@/services/community'
 import {
   FARM_COLS, LAND, BARN_LEVELS, KITCHEN_SLOTS, FERTILISER, PLOT_PRICE, MAX_PLOTS, WATER_SPEEDUP,
   ORDER_SLOTS, ORDER_WAIT, WISH_REWARD, CROPS, DECOR, TREES, PRODUCERS, RECIPES, GOODS, starterLayout, xpForLevel, MAX_FARM_LEVEL,
@@ -56,6 +58,12 @@ function freshFarm() {
     lastHelpAt: 0,
     visitsToday: { date: '', farms: {} }, // { CODE: crops watered there today }
     dealDay: '', // the day today's deal was bought
+    tutorial: 0, // the farm tour step, or 'done'
+    giftsSeen: [], // gift ids already added to the barn
+    pendingGifts: [], // gifts waiting for space in the barn
+    giftsSent: { date: '', farms: {} }, // { CODE: gifts sent there today }
+    communityClaimed: '', // the week whose neighbourhood reward was collected
+    goldenCan: false, // the one-time special decoration has been given
     createdAt: Date.now(),
   }
 }
@@ -121,6 +129,8 @@ export const useFarmStore = defineStore('farm', () => {
     const saved = await storage.load()
     const base = freshFarm()
     state.value = saved ? { ...base, ...saved } : base
+    // farms from before the tour existed: only show it if nothing's been harvested yet
+    if (saved && saved.tutorial === undefined) state.value.tutorial = Object.keys(saved.almanac ?? {}).length ? 'done' : 0
     if (state.value.kitchen.length < KITCHEN_SLOTS[state.value.kitchenLevel].slots) {
       state.value.kitchen = [...state.value.kitchen, ...Array(KITCHEN_SLOTS[state.value.kitchenLevel].slots - state.value.kitchen.length).fill(null)]
     }
@@ -396,6 +406,7 @@ export const useFarmStore = defineStore('farm', () => {
     orders[index] = { waitUntil: Date.now() + ORDER_WAIT * MINUTE }
     state.value.orders = orders
     pip.track('order')
+    countOrder(1)
     save()
     return { petals: order.petals, xp: order.xp, leveled }
   }
@@ -459,7 +470,7 @@ export const useFarmStore = defineStore('farm', () => {
   // ---- the shop ----
   /** One decoration or tree a day is 30% off. */
   const deal = computed(() => {
-    const pool = [...DECOR, ...TREES].filter((d) => d.level <= state.value.level && d.price >= 5)
+    const pool = [...DECOR, ...TREES].filter((d) => !d.special && d.level <= state.value.level && d.price >= 5)
     if (!pool.length) return null
     const seed = Number(todayKey().replace(/\D/g, ''))
     const item = pool[seed % pool.length]
@@ -480,7 +491,7 @@ export const useFarmStore = defineStore('farm', () => {
   function priceOf(type) {
     if (type === 'plot') return plotCount.value >= MAX_PLOTS ? null : PLOT_PRICE(plotCount.value)
     const item = TREES.find((t) => t.id === type) ?? PRODUCERS.find((p) => p.id === type) ?? DECOR.find((d) => d.id === type)
-    if (!item || item.level > state.value.level) return null
+    if (!item || item.special || item.level > state.value.level) return null
     return item.price
   }
 
@@ -515,6 +526,21 @@ export const useFarmStore = defineStore('farm', () => {
     state.value.fertiliser += bundle ? FERTILISER.bundle : 1
     save()
     return true
+  }
+
+  // ---- the farm tour ----
+  const TOUR_REWARD = 10
+  function tourNext(step) {
+    if (state.value.tutorial === 'done') return
+    if (typeof step === 'number' && state.value.tutorial !== step) return
+    state.value.tutorial = state.value.tutorial + 1
+    save()
+  }
+  function tourFinish(rewarded = true) {
+    if (state.value.tutorial === 'done') return
+    state.value.tutorial = 'done'
+    if (rewarded) pip.earn(TOUR_REWARD)
+    save()
   }
 
   function rename(next) {
@@ -560,6 +586,66 @@ export const useFarmStore = defineStore('farm', () => {
     return fresh
   }
 
+  // ---- gifts ----
+  /** Friends sent us things: they go into the barn (or wait for room). Returns the new ones. */
+  function applyGifts(gifts) {
+    const fresh = gifts.filter((g) => !state.value.giftsSeen.includes(g.id) && GOODS[g.good])
+    if (!fresh.length && !state.value.pendingGifts.length) return []
+    const waiting = [...state.value.pendingGifts, ...fresh.map((g) => ({ good: g.good, n: g.n }))]
+    const still = []
+    for (const w of waiting) {
+      const got = addToBarn(w.good, w.n)
+      if (got < w.n) still.push({ good: w.good, n: w.n - got })
+    }
+    state.value.pendingGifts = still
+    state.value.giftsSeen = [...state.value.giftsSeen, ...fresh.map((g) => g.id)].slice(-200)
+    if (fresh.length) pip.track('giftReceived', fresh.length)
+    save()
+    return fresh
+  }
+
+  const GIFTS_PER_FRIEND = 3
+  function giftsSentToday(code) {
+    const g = state.value.giftsSent
+    return g.date === todayKey() ? g.farms[code] ?? 0 : 0
+  }
+
+  /** Take a gift out of the barn to send. Returns false if we don't have it or hit today's limit. */
+  function packGift(code, good, n) {
+    if (giftsSentToday(code) >= GIFTS_PER_FRIEND) return false
+    if (!takeFromBarn({ [good]: n })) return false
+    const g = state.value.giftsSent.date === todayKey() ? state.value.giftsSent : { date: todayKey(), farms: {} }
+    state.value.giftsSent = { ...g, farms: { ...g.farms, [code]: (g.farms[code] ?? 0) + 1 } }
+    pip.track('giftSent')
+    save()
+    return true
+  }
+
+  /** The gift didn't go through: put it back. */
+  function unpackGift(code, good, n) {
+    addToBarn(good, n)
+    const g = state.value.giftsSent
+    if (g.farms[code]) state.value.giftsSent = { ...g, farms: { ...g.farms, [code]: g.farms[code] - 1 } }
+    save()
+  }
+
+  // ---- the neighbourhood goal ----
+  /** Collect this week's reward once the goal is reached. */
+  function claimCommunity(status) {
+    if (!status || status.total < status.goal || state.value.communityClaimed === status.week) return null
+    state.value.communityClaimed = status.week
+    pip.earn(COMMUNITY_REWARD)
+    let can = false
+    if (!state.value.goldenCan) {
+      state.value.goldenCan = true
+      state.value.inventory = { ...state.value.inventory, goldencan: (state.value.inventory.goldencan ?? 0) + 1 }
+      can = true
+    }
+    pip.track('community')
+    save()
+    return { petals: COMMUNITY_REWARD, can }
+  }
+
   /** How many crops we've watered on someone else's farm today (5 a day per farm). */
   function helpedToday(code) {
     const v = state.value.visitsToday
@@ -571,6 +657,14 @@ export const useFarmStore = defineStore('farm', () => {
     state.value.visitsToday = { ...v, farms: { ...v.farms, [code]: (v.farms[code] ?? 0) + 1 } }
     pip.track('visit')
     save()
+  }
+
+  /** This week's numbers for the neighbours' leaderboard. */
+  function weekStats() {
+    const same = pip.weekly.key === weekKey()
+    const p = same ? pip.weekly.progress : {}
+    const stars = Object.values(pip.levels).reduce((sum, g) => sum + Object.values(g.stars ?? {}).reduce((a, b) => a + b, 0), 0)
+    return { key: weekKey(), harvests: p.harvest ?? 0, orders: p.order ?? 0, stars }
   }
 
   /** What friends see: the layout and what's growing, never anything private. */
@@ -589,7 +683,8 @@ export const useFarmStore = defineStore('farm', () => {
         ...(o.crop ? { crop: { id: o.crop.id, plantedAt: o.crop.plantedAt, readyAt: o.crop.readyAt } } : {}),
         ...(o.readyAt ? { readyAt: o.readyAt } : {}),
       })),
-      pip: { growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower },
+      pip: { growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower, accessory: pip.currentAccessory },
+      week: weekStats(),
       at: t,
     }
   }
@@ -611,6 +706,7 @@ export const useFarmStore = defineStore('farm', () => {
     load, save, onSave, tick, gainXp, clearLevelUp, sell, plant, plantAll, harvest, harvestAll, waterCrop, fertilise, startProducer,
     cook, collectDish, feedPip, ensureWish, fulfilWish, refillOrders, fulfilOrder, skipOrder,
     move, store, place, placeAnywhere, buy, priceOf, buyLand, upgradeBarn, upgradeKitchen, buyFertiliser, rename,
+    tourNext, tourFinish, applyGifts, packGift, unpackGift, giftsSentToday, claimCommunity, weekStats,
     setSharing, newFarmCode, rememberNeighbour, forgetNeighbour, applyHelps, helpedToday, noteHelp, snapshot, find,
     devReset, devXp,
     MAX_FARM_LEVEL,

@@ -218,6 +218,7 @@ function clearChat() {
                   :pot="pip.currentPot"
                   :leaf="pip.currentLeaf"
                   :flower="pip.currentFlower"
+                  :accessory="pip.currentAccessory"
                   :interactive="false"
                   :idle="false"
                   class="h-full w-full"

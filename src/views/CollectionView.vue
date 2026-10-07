@@ -9,12 +9,22 @@ import Pip from '@/components/Pip.vue'
 import CollectionItem from '@/components/CollectionItem.vue'
 import PetalBadge from '@/components/PetalBadge.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import FarmBook from '@/components/farm/FarmBook.vue'
+import BadgeBook from '@/components/BadgeBook.vue'
+import Icon from '@/components/Icon.vue'
 
 const pip = usePipStore()
 const route = useRoute()
 const router = useRouter()
 
-const validTab = (tab) => CATEGORIES.some((c) => c.id === tab)
+// the farm's two collections sit after Pip's looks
+const FARM_TABS = [
+  { id: 'badges', label: 'Badges' },
+  { id: 'harvest', label: 'Harvest' },
+  { id: 'recipes', label: 'Recipes' },
+]
+const isFarmTab = (tab) => FARM_TABS.some((t) => t.id === tab)
+const validTab = (tab) => CATEGORIES.some((c) => c.id === tab) || isFarmTab(tab)
 const tab = ref(validTab(route.query.tab) ? route.query.tab : 'pots')
 const pipRef = ref(null)
 const toast = ref('')
@@ -28,8 +38,8 @@ const ringOffset = computed(() => 2 * Math.PI * 22 * (1 - collected.value / tota
 const tabIndex = computed(() => CATEGORIES.findIndex((c) => c.id === tab.value))
 
 // Grown items first (by level), then the rare ones from seed packets.
-const rank = (i) => (i.shop ? 98 : i.packet ? 99 : i.level)
-const items = computed(() => [...ITEMS[tab.value]].sort((a, b) => rank(a) - rank(b)))
+const rank = (i) => (i.badge ? 97 : i.shop ? 98 : i.packet ? 99 : i.level)
+const items = computed(() => (isFarmTab(tab.value) ? [] : [...ITEMS[tab.value]].sort((a, b) => rank(a) - rank(b))))
 const hasUnseen = (category) => pip.unseenItems.some((key) => key.startsWith(`${category}:`))
 const isNew = (category, id) => pip.unseenItems.includes(`${category}:${id}`)
 
@@ -71,6 +81,8 @@ function showLocked(item) {
     ? 'This one hides in mystery seed packets. Earn petals in Play.'
     : item.shop
       ? `Find this in the shop for ${item.shop} petals.`
+      : item.badge
+        ? 'Earn this with a badge. See the Badges tab.'
       : `Keep caring for ${pip.plantName}. This grows at level ${item.level}.`
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 3200)
@@ -92,6 +104,9 @@ onBeforeUnmount(() => {
 <template>
   <section class="page flex flex-col">
     <PageHeader eyebrow="Little treasures" title="Collection">
+      <RouterLink to="/garden" class="icon-btn" :aria-label="`${pip.plantName}’s garden`">
+        <Icon name="garden" :size="19" :stroke="2" />
+      </RouterLink>
       <PetalBadge :count="pip.petals" />
     </PageHeader>
 
@@ -107,6 +122,7 @@ onBeforeUnmount(() => {
           :pot="pip.currentPot"
           :leaf="pip.currentLeaf"
           :flower="pip.currentFlower"
+          :accessory="pip.currentAccessory"
           :idle="false"
           class="relative h-full w-full"
         />
@@ -153,10 +169,16 @@ onBeforeUnmount(() => {
           {{ cat.label }}
           <span v-if="hasUnseen(cat.id)" class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-clay-300" aria-label="new" />
         </button>
+        <button v-for="t in FARM_TABS" :key="t.id" type="button" role="tab" :aria-selected="tab === t.id" @click="selectTab(t.id)">
+          {{ t.label }}
+        </button>
       </div>
     </div>
 
-    <Transition name="fade" mode="out-in">
+    <BadgeBook v-if="tab === 'badges'" />
+    <FarmBook v-else-if="isFarmTab(tab)" :key="tab" :kind="tab" />
+
+    <Transition v-if="!isFarmTab(tab)" name="fade" mode="out-in">
       <div
         v-if="notYetVisible"
         :key="notYetVisible"
@@ -171,7 +193,7 @@ onBeforeUnmount(() => {
       <p v-else :key="hint" class="mt-4 text-[0.8125rem] font-medium text-bark-400">{{ hint }}</p>
     </Transition>
 
-    <Transition name="grid" mode="out-in">
+    <Transition v-if="!isFarmTab(tab)" name="grid" mode="out-in">
       <div :key="tab" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" :data-index="tabIndex">
         <CollectionItem
           v-for="(item, i) in items"

@@ -7,9 +7,10 @@ import { critterById, formatLeft, hasAll } from '@/utils/farmLogic'
 import BottomSheet from '../BottomSheet.vue'
 import GoodIcon from './GoodIcon.vue'
 import PetalIcon from '../PetalIcon.vue'
+import CommunityCard from './CommunityCard.vue'
 
 defineProps({ open: { type: Boolean, default: false } })
-const emit = defineEmits(['close', 'delivered'])
+const emit = defineEmits(['close', 'delivered', 'community'])
 
 const farm = useFarmStore()
 const now = computed(() => farm.now)
@@ -27,6 +28,7 @@ function deliver(i) {
 
 <template>
   <BottomSheet :open="open" title="Order board" eyebrow="Your neighbours need a hand" @close="emit('close')">
+    <CommunityCard class="mb-3" @claimed="(r) => emit('community', r)" />
     <ul class="space-y-2.5">
       <li v-for="o in orders" :key="o.i" class="rounded-2xl border border-line p-3" :class="o.needs ? 'bg-surface' : 'bg-sand-100/50'">
         <template v-if="o.needs">

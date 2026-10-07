@@ -239,6 +239,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
             :pot="pip.currentPot"
             :leaf="pip.currentLeaf"
             :flower="pip.currentFlower"
+            :accessory="pip.currentAccessory"
             :interactive="phase === 'playing'"
             :idle="false"
             class="h-full w-full"

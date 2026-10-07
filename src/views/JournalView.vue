@@ -120,6 +120,7 @@ function back() {
                 :pot="entry.snapshot?.pot"
                 :leaf="entry.snapshot?.leaf"
                 :flower="entry.snapshot?.flower"
+                :accessory="entry.snapshot?.accessory"
                 still
                 :interactive="false"
                 :idle="false"

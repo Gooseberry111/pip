@@ -24,6 +24,7 @@ const props = defineProps({
   pipSleeping: { type: Boolean, default: false },
   wishGood: { type: String, default: null },
   helped: { type: Array, default: () => [] }, // uids watered this visit
+  highlight: { type: String, default: null }, // farm tour: 'plot-empty' | 'plot-crop'
 })
 
 const emit = defineEmits(['tap', 'tapTile', 'move'])
@@ -60,7 +61,7 @@ function statusOf(o) {
   if (prod) {
     if (o.readyAt && t >= o.readyAt) return { ready: prod.makes }
     if (o.readyAt) return { progress: growthFraction(o.readyAt - prod.minutes * 60000, o.readyAt, t) }
-    return { idle: true }
+    return Object.keys(prod.feed).length && props.mode !== 'view' ? { idle: true } : null
   }
   if (o.type === 'kitchen' && kitchenReady.value) return { ready: kitchenReady.value }
   if (o.type === 'board' && props.ordersReady) return { badge: props.ordersReady }
@@ -165,11 +166,17 @@ const viewBox = (type) => {
         'is-selected': selected === o.uid,
         'is-dragging': drag?.uid === o.uid,
         'is-helped': helped.includes(o.uid),
+        'is-hint': (highlight === 'plot-empty' && o.type === 'plot' && !o.crop) || (highlight === 'plot-crop' && o.crop),
       }"
       :style="box(o.x, o.y, o.type)"
-      @pointerdown="(e) => onObjDown(e, o)"
-      @click.stop="onObjClick(o)"
     >
+      <!-- only the footprint is tappable, so tall roofs and trees don't cover their neighbours -->
+      <div
+        class="hit absolute inset-x-0 bottom-0"
+        :style="{ height: `${h * tile}px` }"
+        @pointerdown="(e) => onObjDown(e, o)"
+        @click.stop="onObjClick(o)"
+      />
       <svg v-if="o.type !== 'pip'" :viewBox="viewBox(o.type)" class="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
         <FarmArt :type="o.type" :obj="o" :now="now" :busy="o.type === 'kitchen' && kitchenBusy" />
       </svg>
@@ -182,6 +189,7 @@ const viewBox = (type) => {
           :pot="pipLook.pot"
           :leaf="pipLook.leaf"
           :flower="pipLook.flower"
+          :accessory="pipLook.accessory"
           :sleeping="pipSleeping"
           :interactive="false"
           :idle="mode !== 'build'"
@@ -249,10 +257,14 @@ const viewBox = (type) => {
   background-size: var(--tile) var(--tile);
 }
 .obj {
-  -webkit-tap-highlight-color: transparent;
-  cursor: pointer;
+  pointer-events: none;
 }
-.is-build .obj {
+.hit {
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.is-build .hit {
   cursor: grab;
 }
 .obj.is-selected::after {
@@ -266,10 +278,25 @@ const viewBox = (type) => {
   box-shadow: 0 0 0 3px #F2C66B;
   pointer-events: none;
 }
+.obj.is-hint::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100% - var(--tile));
+  border-radius: 0.6rem;
+  pointer-events: none;
+  animation: hint 1.3s ease-in-out infinite;
+}
+@keyframes hint {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 0 2px rgb(255 255 255 / 0.6); }
+  50% { box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 0 8px rgb(255 255 255 / 0); }
+}
 .obj.is-dragging {
   opacity: 0.35;
 }
-.obj:active:not(.is-dragging) svg {
+.obj:has(.hit:active):not(.is-dragging) svg {
   transform: scale(0.97);
 }
 .ghost svg {

@@ -74,6 +74,7 @@ function skip() {
         :pot="pip.currentPot"
         :leaf="pip.currentLeaf"
         :flower="pip.currentFlower"
+        :accessory="pip.currentAccessory"
         :calm="!chosen"
         :interactive="false"
         :idle="false"

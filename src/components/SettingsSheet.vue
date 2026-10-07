@@ -4,6 +4,7 @@ import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { usePipStore } from '@/stores/pip'
 import { remindersMode, enableReminders, disableReminders } from '@/services/notifications'
 import Icon from './Icon.vue'
+import BackupSettings from './BackupSettings.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -106,6 +107,12 @@ const ROWS = [
   { key: 'soundOn', label: 'Sound effects', hint: 'Taps, pops and chimes', icon: 'sound-on', tint: '#E2EEF2', color: '#568BA1', toggle: () => pip.toggleSound() },
   { key: 'musicOn', label: 'Music', hint: 'Gentle tunes at home and in games', icon: 'music', tint: '#EEE7F3', color: '#8C7FB5', toggle: () => pip.toggleMusic() },
   { key: 'hapticsOn', label: 'Haptics', hint: 'Little taps you can feel', icon: 'vibrate', tint: '#F8E3D8', color: '#C97858', toggle: () => pip.toggleHaptics() },
+  { key: 'calmMotion', label: 'Calmer motion', hint: 'Fewer animations, nothing bouncing around', icon: 'wind', tint: '#E4EED9', color: '#6A955A', toggle: () => pip.toggleCalmMotion() },
+]
+const SIZES = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'large', label: 'Large' },
+  { value: 'larger', label: 'Larger' },
 ]
 </script>
 
@@ -148,6 +155,23 @@ const ROWS = [
               </span>
               <span class="switch" :class="{ 'is-on': pip[row.key] }" aria-hidden="true"><span /></span>
             </button>
+          </div>
+
+          <div class="card mt-3 px-4 py-3.5">
+            <p class="text-[0.9375rem] font-bold text-bark-600">Text size</p>
+            <div class="segmented mt-2 w-full">
+              <button
+                v-for="t in SIZES"
+                :key="t.value"
+                type="button"
+                role="tab"
+                class="min-w-0 flex-1 px-1!"
+                :aria-selected="pip.textSize === t.value"
+                @click="pip.setTextSize(t.value)"
+              >
+                {{ t.label }}
+              </button>
+            </div>
           </div>
 
           <p class="eyebrow mt-6 px-1">Gentle reminders</p>
@@ -215,6 +239,9 @@ const ROWS = [
             </button>
           </div>
 
+          <p class="eyebrow mt-6 px-1">Backup</p>
+          <BackupSettings />
+
           <p class="eyebrow mt-6 px-1">Your plant</p>
           <div class="card mt-2 divide-y divide-line overflow-hidden">
             <label class="flex min-h-16 items-center gap-3.5 px-4" @click="focusName">
@@ -243,7 +270,7 @@ const ROWS = [
                   {{ confirmReset ? 'Tap again to start over' : 'Start over' }}
                 </span>
                 <span class="block text-xs font-medium text-bark-400">
-                  {{ confirmReset ? `This plants a brand new seed. ${pip.plantName} and your treasures will be gone.` : 'Plant a fresh seed' }}
+                  {{ confirmReset ? `This plants a brand new seed. ${pip.plantName}, the farm and your treasures will be gone from this phone. Any online backup stays safe under its code.` : 'Plant a fresh seed' }}
                 </span>
               </span>
             </button>
