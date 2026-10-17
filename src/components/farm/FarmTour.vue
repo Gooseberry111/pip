@@ -16,7 +16,7 @@ const STEPS = [
   { text: () => 'Wheat grows in about a minute. When it’s ready, tap it to pick it. It goes into the barn.' },
   { text: () => 'Our neighbours leave orders on the board. Tap Orders to see what they’d like.' },
   { text: (n) => `Dishes from the kitchen sell for more, and they’re my favourite treats. Tap Kitchen to have a look.` },
-  { text: () => 'Last thing: tap Arrange to move things around. Then visit the Shop to make the farm your own.' },
+  { text: () => 'Last thing: tap Build to move things around and add new ones. Make the farm your own!' },
 ]
 
 const step = computed(() => farm.state.tutorial)
@@ -55,7 +55,7 @@ const current = computed(() => (typeof step.value === 'number' ? STEPS[step.valu
 
 <style scoped>
 .tour {
-  bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  bottom: calc(11.25rem + env(safe-area-inset-bottom));
 }
 .line {
   animation: line-in 0.35s ease-out both;

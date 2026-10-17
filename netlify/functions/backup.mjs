@@ -8,6 +8,7 @@
 // It's stored only as a hash, so the stored key can't be turned back into a code.
 import { getStore } from '@netlify/blobs'
 import { createHash } from 'node:crypto'
+import { cors } from '../lib/cors.mjs'
 
 const CODE = /^[A-HJ-NP-Z2-9]{12}$/
 const MAX_BYTES = 400_000
@@ -19,7 +20,7 @@ function json(body, status = 200) {
 const clean = (code) => String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
 const keyFor = (code) => `backup:${createHash('sha256').update(`pip-backup:${code}`).digest('hex')}`
 
-export default async (req) => {
+const handler = async (req) => {
   let store
   try {
     store = getStore({ name: 'pip-backups', consistency: 'strong' })
@@ -67,5 +68,7 @@ export default async (req) => {
     return json({ error: 'server' }, 500)
   }
 }
+
+export default cors(handler)
 
 export const config = { path: '/api/backup' }

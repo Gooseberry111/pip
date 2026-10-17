@@ -48,3 +48,19 @@ export function daysTogether(since, now = Date.now()) {
   today.setHours(0, 0, 0, 0)
   return Math.max(1, Math.round((today - start) / 86400000) + 1)
 }
+
+// ---- seasons ----
+export const SEASONS = {
+  spring: { name: 'Spring', icon: '🌸', line: 'Blossom time. Everything is waking up.' },
+  summer: { name: 'Summer', icon: '☀️', line: 'Long sunny days on the farm.' },
+  autumn: { name: 'Autumn', icon: '🍂', line: 'Crunchy leaves and pumpkin weather.' },
+  winter: { name: 'Winter', icon: '❄️', line: 'Frosty mornings. Cosy inside.' },
+}
+
+/** The season right now. South of the equator the seasons are the other way round. */
+export function getSeason(date = new Date(), southern = false) {
+  const m = date.getMonth() // 0 is January
+  const north = m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter'
+  if (!southern) return north
+  return { spring: 'autumn', summer: 'winter', autumn: 'spring', winter: 'summer' }[north]
+}

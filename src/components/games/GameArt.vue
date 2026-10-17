@@ -196,7 +196,7 @@ defineProps({
       </g>
     </g>
 
-    <!-- Mini Golf (coming soon) -->
+    <!-- Mini Golf -->
     <g v-else-if="game === 'golf'">
       <rect width="160" height="110" fill="#E2EEDC" />
       <path d="M14 80 Q40 50 80 66 T146 52 L146 96 L14 96Z" fill="#B8D6A4" />
@@ -207,7 +207,7 @@ defineProps({
       <path d="M50 74 Q80 54 112 68" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 4" fill="none" />
     </g>
 
-    <!-- Pond Fishing (coming soon) -->
+    <!-- Pond Fishing -->
     <g v-else-if="game === 'fishing'">
       <rect width="160" height="110" fill="#DCEAF0" />
       <ellipse cx="80" cy="74" rx="62" ry="24" fill="#9CC7DA" />
@@ -219,6 +219,37 @@ defineProps({
         <circle cx="-5" cy="-1" r="1.2" fill="#3A2D23" />
       </g>
       <circle cx="96" cy="62" r="3" fill="#E48C9C" />
+    </g>
+
+    <!-- Seed Sudoku -->
+    <g v-else-if="game === 'sudoku'">
+      <rect width="160" height="110" fill="#F1EBDD" />
+      <g transform="translate(44 12) rotate(-4 36 43)">
+        <rect width="72" height="86" rx="8" fill="#8B6A4F" />
+        <g v-for="r in 3" :key="r">
+          <rect v-for="c in 3" :key="c" :x="4 + (c - 1) * 22" :y="4 + (r - 1) * 26.5" width="20" height="24.5" rx="4" :fill="(r + c) % 2 ? '#FBF6EC' : '#ECDFCA'" />
+        </g>
+        <circle cx="14" cy="16" r="5" fill="#E35D4B" /><path d="M14 11 l2 -3" stroke="#6E9E5C" stroke-width="1.6" />
+        <path d="M33 22 l3 -10 l3 10z" fill="#EE9447" /><path d="M36 12 l-2 -3 M36 12 l2 -3" stroke="#7FB063" stroke-width="1.4" />
+        <ellipse cx="58" cy="44" rx="6" ry="5" fill="#EB8C35" />
+        <circle cx="14" cy="69" r="4.5" fill="#5B74C9" /><circle cx="36" cy="42" r="5" fill="#F2CB4C" />
+        <path d="M54 66 q4 -8 8 0 q-4 4 -8 0z" fill="#E5485E" />
+      </g>
+      <g transform="translate(124 70)"><circle r="9" fill="#FBE7A8" /><path d="M-3 0 l2 2 l4 -5" stroke="#6FA35B" stroke-width="2" fill="none" stroke-linecap="round" /></g>
+    </g>
+
+    <!-- Garden Tiles -->
+    <g v-else-if="game === 'tiles'">
+      <rect width="160" height="110" fill="#EAF1E4" />
+      <g v-for="(t, i) in [[40, 28, '#E35D4B'], [64, 28, '#F2CB4C'], [88, 28, '#5B74C9'], [52, 22, '#EE9447'], [76, 22, '#E35D4B'], [64, 16, '#86AD72']]" :key="i" :transform="`translate(${t[0]} ${t[1]})`">
+        <rect width="24" height="24" rx="5" fill="#FFF8EC" stroke="#D9C4A6" stroke-width="1.2" />
+        <rect y="22" width="24" height="3" rx="1.5" fill="#C9B08A" />
+        <circle cx="12" cy="12" r="6" :fill="t[2]" />
+      </g>
+      <rect x="22" y="72" width="116" height="24" rx="7" fill="#B98C63" />
+      <g v-for="k in 3" :key="`s${k}`" :transform="`translate(${26 + (k - 1) * 22} 75)`">
+        <rect width="19" height="18" rx="4" fill="#FFF8EC" /><circle cx="9.5" cy="9" r="5" fill="#E35D4B" />
+      </g>
     </g>
   </svg>
 </template>

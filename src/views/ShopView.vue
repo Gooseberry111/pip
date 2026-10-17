@@ -16,6 +16,7 @@ import PetalIcon from '@/components/PetalIcon.vue'
 import Icon from '@/components/Icon.vue'
 import ItemPreview from '@/components/ItemPreview.vue'
 import FarmArt from '@/components/farm/FarmArt.vue'
+import { season } from '@/services/weather'
 import GoodIcon from '@/components/farm/GoodIcon.vue'
 
 const farm = useFarmStore()
@@ -219,7 +220,7 @@ const viewBox = (type) => {
 
     <!-- decorations -->
     <div v-else-if="tab === 'decor'" class="mt-4 grid grid-cols-3 gap-2.5">
-      <div v-for="d in DECOR.filter((x) => !x.special)" :key="d.id" class="tile card p-2.5!" :class="{ 'is-locked': d.level > level }">
+      <div v-for="d in DECOR.filter((x) => !x.special && (!x.season || x.season === season))" :key="d.id" class="tile card p-2.5!" :class="{ 'is-locked': d.level > level }">
         <div class="art aspect-square!">
           <svg :viewBox="viewBox(d.id)" class="h-full w-full overflow-visible"><FarmArt :type="d.id" /></svg>
         </div>

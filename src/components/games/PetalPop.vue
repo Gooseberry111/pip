@@ -44,8 +44,8 @@ const cfg = computed(() => POP_LEVELS[level.value - 1])
 const progress = computed(() => pip.levelProgress('pop'))
 const levelList = computed(() => POP_LEVELS.map((l) => ({ goal: `Clear ${l.rows} rows of ${l.colors} colours` })))
 // the shot target tightens as the levels go up
-const par = computed(() => Math.round(startCount.value * (0.42 - level.value * 0.004)))
-const good = computed(() => Math.round(startCount.value * (0.56 - level.value * 0.004)))
+const par = computed(() => Math.round(startCount.value * Math.max(0.27, 0.38 - Math.min(level.value, 40) * 0.003)))
+const good = computed(() => Math.round(startCount.value * Math.max(0.38, 0.5 - Math.min(level.value, 40) * 0.003)))
 
 // ---- board ----
 let grid = [] // grid[r][c] = colour index or -1

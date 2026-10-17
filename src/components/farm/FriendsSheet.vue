@@ -8,6 +8,7 @@ import { syncStatus, syncFarmNow } from '@/services/farmSync'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
 import Leaderboard from './Leaderboard.vue'
+import { share as shareSheet, siteUrl } from '@/services/native'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['close'])
@@ -20,7 +21,7 @@ const copied = ref(false)
 const explore = ref(null) // null loading, [] none, or a list
 const exploreError = ref('')
 
-const link = computed(() => `${location.origin}${location.pathname}#/visit/${farm.state.code}`)
+const link = computed(() => (siteUrl() ? `${siteUrl()}#/visit/${farm.state.code}` : ''))
 const cleanCode = computed(() => code.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
 const status = computed(() => {
   if (!farm.state.shared) return ''
@@ -66,15 +67,11 @@ async function copy(text) {
 
 async function share() {
   const text = `Come and visit my farm in Pip! Code: ${farm.state.code}`
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: farm.name, text, url: link.value })
-      return
-    } catch {
-      // cancelled
-    }
+  const r = await shareSheet({ title: farm.name, text, url: link.value })
+  if (r === 'copied') {
+    copied.value = true
+    setTimeout(() => (copied.value = false), 1800)
   }
-  copy(`${text} ${link.value}`)
 }
 
 function visit(c) {

@@ -24,6 +24,15 @@ const POTS = {
   cocoa: { light: '#B88E70', base: '#A07558', dark: '#835C43', rimLight: '#C9A285', rimDark: '#93684C' },
   coral: { light: '#F7B9A0', base: '#EE9C82', dark: '#D47C63', rimLight: '#FBD0A4', rimDark: '#EDAF7E' },
   midnight: { light: '#5C6C96', base: '#4A5A84', dark: '#384669', rimLight: '#6E7EA6', rimDark: '#4F5F8A' },
+  lemon: { light: '#FBEA9C', base: '#F4D96B', dark: '#D9B947', rimLight: '#FDF3C4', rimDark: '#E7C85A' },
+  peach: { light: '#FAD2BA', base: '#F3BB9C', dark: '#DA9C7C', rimLight: '#FCE0CE', rimDark: '#E6AA8A' },
+  pumpkinpot: { light: '#F4AF6E', base: '#EB9448', dark: '#C9752F', rimLight: '#A9C28A', rimDark: '#7F9E66' },
+  ocean: { light: '#9FCFE0', base: '#78B6CE', dark: '#5893AD', rimLight: '#C2E1EC', rimDark: '#6AA6BF' },
+  charcoal: { light: '#7D7A78', base: '#64615F', dark: '#4A4846', rimLight: '#8F8C89', rimDark: '#5A5755' },
+  galaxy: { light: '#5D5193', base: '#47407A', dark: '#30295A', rimLight: '#7468AB', rimDark: '#3D356C', accent: '#FFF3C9' },
+  gold: { light: '#F7DE8C', base: '#E9C35A', dark: '#C99A2F', rimLight: '#FBEAB0', rimDark: '#D9AE45' },
+  forest: { light: '#7FA678', base: '#628C5C', dark: '#476D43', rimLight: '#94B88C', rimDark: '#557D50' },
+  rosepot: { light: '#F6D5DA', base: '#EDBDC5', dark: '#D69CA7', rimLight: '#FAE3E7', rimDark: '#E2ADB7' },
 }
 
 const p = computed(() => POTS[props.pot] ?? POTS.terracotta)

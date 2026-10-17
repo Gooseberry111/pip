@@ -116,7 +116,7 @@ let endBeat = 0
 const spb = () => 60 / cfg.value.bpm
 const timeOf = (beat) => t0 + beat * spb()
 // seconds a drop takes to fall the whole way: quicker every song
-const travel = () => Math.max(0.95, 2.1 - level.value * 0.06)
+const travel = () => Math.max(0.86, 2.05 - level.value * 0.06)
 
 function pick(n) {
   level.value = n

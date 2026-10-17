@@ -68,6 +68,12 @@ export const LEAF_COLORS = {
   starlight: { top: '#79A894', bottom: '#557F70', vein: '#D3E8DD' },
   golden: { top: '#C9C46E', bottom: '#A79E4C', vein: '#F1EBC2' },
   frost: { top: '#B7D2CF', bottom: '#8FB3B0', vein: '#EEF6F5' },
+  lime: { top: '#C3DD7E', bottom: '#9CC05A', vein: '#EAF4C9' },
+  autumn: { top: '#EBA35A', bottom: '#CF6B3E', vein: '#F8D9AE' },
+  seaglass: { top: '#9ED0C4', bottom: '#6FAE9F', vein: '#DDF0EA' },
+  ruby: { top: '#C9536A', bottom: '#962E46', vein: '#F0B9C4' },
+  minty: { top: '#B8E3C8', bottom: '#86C49D', vein: '#E8F6ED' },
+  plum: { top: '#8B6A9E', bottom: '#5F4473', vein: '#D7C5E2' },
 }
 
 export const STEM_COLOR = '#79A066'

@@ -1,6 +1,9 @@
 <script setup>
 // A grid of levels with their stars. Finishing a level unlocks the next one.
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+// Levels go on and on, so they're shown in chapters of 20: every chapter you've reached,
+// plus a peek at the next.
+import { computed, onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
+import { levelTier } from '@/utils/levelGen'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
 import Icon from '../Icon.vue'
@@ -24,6 +27,25 @@ const burst = ref(0)
 const burstAt = ref({ x: 50, y: 50 })
 const tiles = ref([])
 let timers = []
+
+const PAGE = 20
+const reached = computed(() => Math.min(props.levels.length, Math.max(props.progress.unlocked, props.celebrate ?? 0)))
+const chapterCount = computed(() => Math.min(Math.ceil(props.levels.length / PAGE), Math.floor((reached.value - 1) / PAGE) + 2))
+const chapter = ref(Math.floor((reached.value - 1) / PAGE))
+const visible = computed(() => {
+  const start = chapter.value * PAGE
+  const end = Math.min(props.levels.length, start + PAGE)
+  return Array.from({ length: end - start }, (_, k) => ({ i: start + k, level: props.levels[start + k] }))
+})
+const chapterStars = (c) => {
+  let sum = 0
+  for (let n = c * PAGE + 1; n <= (c + 1) * PAGE; n++) sum += props.progress.stars[n] ?? 0
+  return sum
+}
+function openChapter(c) {
+  chapter.value = c
+  nextTick(() => tiles.value[c * PAGE]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+}
 
 function isLocked(n) {
   return n > props.progress.unlocked || n === opening.value
@@ -58,13 +80,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => timers.forEach(clearTimeout))
 
-// the second half of every game is marked Hard, the last few Expert
-function tier(i) {
-  const n = props.levels.length
-  if (i >= n - Math.max(3, Math.round(n * 0.2))) return 'Expert'
-  if (i >= Math.floor(n / 2)) return 'Hard'
-  return ''
-}
+// every 5th level is Hard and every 10th Expert, matching how the difficulty waves
+const tier = (i) => levelTier(i + 1)
 
 const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) => a + b, 0))
 </script>
@@ -81,7 +98,7 @@ const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) 
         :class="dark ? 'bg-white/10 text-[#F6EFE2]' : 'bg-honey-100 text-bark-600'"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.5-4.2 6.1-.8z" fill="#EDB64C" /></svg>
-        {{ earned }} / {{ levels.length * 3 }}
+        {{ earned }}
       </span>
     </div>
     <button
@@ -94,10 +111,28 @@ const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) 
       How to play
     </button>
 
+    <!-- chapters -->
+    <div v-if="chapterCount > 1" class="no-scrollbar -mx-5 mt-4 shrink-0 overflow-x-auto px-5 pb-1">
+      <div class="flex w-max gap-1.5">
+        <button
+          v-for="c in chapterCount"
+          :key="c"
+          type="button"
+          class="chapter"
+          :class="[dark ? 'is-dark' : '', { 'is-on': chapter === c - 1, 'is-locked': (c - 1) * PAGE + 1 > progress.unlocked }]"
+          @click="openChapter(c - 1)"
+        >
+          <span>{{ (c - 1) * PAGE + 1 }}–{{ Math.min(levels.length, c * PAGE) }}</span>
+          <span v-if="chapterStars(c - 1)" class="stars">★ {{ chapterStars(c - 1) }}</span>
+          <Icon v-else-if="(c - 1) * PAGE + 1 > progress.unlocked" name="lock" :size="11" :stroke="2.4" />
+        </button>
+      </div>
+    </div>
+
     <div class="relative mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Celebration :trigger="burst" :x="burstAt.x" :y="burstAt.y" :count="20" :spread="120" />
       <button
-        v-for="(level, i) in levels"
+        v-for="{ i, level } in visible"
         :key="i"
         :ref="(el) => (tiles[i] = el)"
         type="button"
@@ -114,7 +149,7 @@ const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) 
         ]"
         :disabled="isLocked(i + 1)"
         :aria-label="`Level ${i + 1}. ${level.goal}`"
-        :style="{ animationDelay: `${Math.min(i, 12) * 40}ms` }"
+        :style="{ animationDelay: `${Math.min(i % PAGE, 12) * 40}ms` }"
         @click="emit('select', i + 1)"
       >
         <div class="flex items-start justify-between">
@@ -144,6 +179,40 @@ const earned = computed(() => Object.values(props.progress.stars).reduce((a, b) 
 </template>
 
 <style scoped>
+.chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-bark-500);
+  background: var(--color-sand-100);
+  font-variant-numeric: tabular-nums;
+}
+.chapter.is-on {
+  background: var(--color-bark-600);
+  color: #fffaf2;
+}
+.chapter.is-locked {
+  opacity: 0.6;
+}
+.chapter.is-dark {
+  background: rgb(255 255 255 / 0.1);
+  color: rgb(255 255 255 / 0.8);
+}
+.chapter.is-dark.is-on {
+  background: #f6efe2;
+  color: #2e3754;
+}
+.chapter .stars {
+  color: #e0a935;
+}
+.chapter.is-on .stars {
+  color: #f6cf6e;
+}
 .tile {
   animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }

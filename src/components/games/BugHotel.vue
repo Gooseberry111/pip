@@ -2,10 +2,11 @@
 // Bug Hotel: the bugs have checked into the wrong rooms. Tap a tower to pick up the bugs
 // on top, then tap another tower to move them. Bugs only sit on their own kind (or in an
 // empty tower). Give every kind of bug a tower of its own.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { usePipStore } from '@/stores/pip'
-import { HOTEL_LEVELS } from '@/data/games'
+import { HOTEL_LEVELS, HOTEL_FIXED } from '@/data/games'
 import { makeHotel, moveCount, applyMove, solved, topRun } from '@/utils/hotelEngine'
+import { buildBoard } from '@/utils/buildAsync'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
 import GameShell from './GameShell.vue'
@@ -27,7 +28,7 @@ const BUGS = {
   g: 'ant',
 }
 
-const phase = ref('levels') // levels | intro | playing | done
+const phase = ref('levels') // levels | intro | building | playing | done
 const level = ref(Math.min(pip.levelProgress('hotel').unlocked, HOTEL_LEVELS.length))
 const towers = ref([])
 const start = ref([])
@@ -55,16 +56,39 @@ const rows = computed(() => {
   return out
 })
 
+// get the next endless floor ready while you look at the level map
+watch(
+  phase,
+  (p) => {
+    if (p !== 'levels') return
+    const n = Math.min(progress.value.unlocked, HOTEL_LEVELS.length)
+    const c = HOTEL_LEVELS[n - 1]
+    if (c.made && !HOTEL_FIXED[n]) buildBoard(`hotel:${n}`, 'hotel', { cfg: { ...c }, seed: n * 977 + 5 }).catch(() => {})
+  },
+  { immediate: true },
+)
+
 function pick(n) {
   level.value = n
   if (pip.introSeen.hotel) begin()
   else phase.value = 'intro'
 }
 
-function begin() {
+async function begin() {
   pip.markIntroSeen('hotel')
+  const fixed = HOTEL_FIXED[level.value]
+  let hotel
+  if (fixed) hotel = { towers: fixed.towers.map((t) => t.split('')), par: fixed.par }
+  else if (cfg.value.made) {
+    // endless floors are big: the solver works on them in the background
+    towers.value = []
+    phase.value = 'building'
+    const n = level.value
+    hotel = await buildBoard(`hotel:${n}`, 'hotel', { cfg: { ...cfg.value }, seed: n * 977 + 5 })
+    if (level.value !== n || phase.value !== 'building') return
+  }
   // in the rare case no sortable shuffle turns up, an extra empty tower always makes one
-  const hotel = makeHotel(cfg.value) ?? makeHotel({ ...cfg.value, empty: cfg.value.empty + 1 })
+  else hotel = makeHotel(cfg.value) ?? makeHotel({ ...cfg.value, empty: cfg.value.empty + 1 })
   start.value = hotel.towers
   par.value = hotel.par
   restart()
@@ -149,7 +173,7 @@ function undo() {
 function finish() {
   if (phase.value !== 'playing') return
   phase.value = 'done'
-  const stars = moves.value <= par.value && undos.value === 0 ? 3 : moves.value <= Math.ceil(par.value * 1.25) ? 2 : 1
+  const stars = moves.value <= par.value && undos.value === 0 ? 3 : moves.value <= Math.ceil(par.value * 1.15) ? 2 : 1
   const reward = pip.completeLevel('hotel', level.value, stars)
   const unlocked = reward.unlocked && reward.unlocked <= HOTEL_LEVELS.length ? reward.unlocked : null
   justUnlocked.value = unlocked
@@ -198,7 +222,7 @@ const fromTop = (t, j) => t.length - 1 - j
       <div class="px-5 pt-1">
         <div class="flex items-center gap-2.5">
           <span class="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bark-600 px-2.5 text-[0.6875rem] font-extrabold uppercase tracking-wider text-[#FFFAF2]">
-            Level {{ level }}<span class="opacity-55">/ {{ HOTEL_LEVELS.length }}</span>
+            Level {{ level }}
           </span>
           <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-bold text-bark-500">Every bug in its own tower</span>
           <span class="shrink-0 text-[0.8125rem] font-extrabold tabular-nums" :class="moves > par ? 'text-clay-400' : 'text-bark-600'">{{ moves }} / {{ par }} moves</span>
@@ -240,6 +264,12 @@ const fromTop = (t, j) => t.length - 1 - j
             </span>
           </button>
         </div>
+      </div>
+
+      <div v-if="phase === 'building'" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-cream/60 text-center">
+        <span class="building-dot" />
+        <p class="font-display text-lg font-semibold text-bark-600">Checking in the guests…</p>
+        <p class="text-xs font-semibold text-bark-400">Big floors take a moment to shuffle and check.</p>
       </div>
 
       <LevelIntro
@@ -346,6 +376,17 @@ const fromTop = (t, j) => t.length - 1 - j
 </template>
 
 <style scoped>
+.building-dot {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 999px;
+  border: 4px solid var(--color-sand-200);
+  border-top-color: var(--color-leaf-400);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 .tower {
   --room: clamp(2rem, min(11vw, 5.4vh), 3rem);
   width: calc(var(--room) + 0.75rem);

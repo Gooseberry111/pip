@@ -23,7 +23,7 @@ const done = computed(() => props.value >= props.target)
         class="inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-[0.6875rem] font-extrabold uppercase tracking-wider"
         :class="dark ? 'bg-[#F6EFE2] text-[#2E3754]' : 'bg-bark-600 text-[#FFFAF2]'"
       >
-        Level {{ level }}<span class="opacity-55">/ {{ total }}</span>
+        Level {{ level }}
       </span>
       <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-bold" :class="dark ? 'text-white/80' : 'text-bark-500'">{{ goal }}</span>
       <span

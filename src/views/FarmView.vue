@@ -4,18 +4,21 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFarmStore } from '@/stores/farm'
 import { usePipStore } from '@/stores/pip'
-import { GOODS, PLACEABLE, LAND } from '@/data/farm'
-import { cropById, kindOf, sizeOf } from '@/utils/farmLogic'
+import { GOODS, PLACEABLE, LAND, DECOR } from '@/data/farm'
+import { cropById, kindOf, sizeOf, fits, firstFree } from '@/utils/farmLogic'
+import { getDayPhase, SEASONS } from '@/utils/timeOfDay'
+import { weather, season, refreshWeather, WEATHER } from '@/services/weather'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
-import PageHeader from '@/components/PageHeader.vue'
 import PetalBadge from '@/components/PetalBadge.vue'
 import Icon from '@/components/Icon.vue'
 import Modal from '@/components/Modal.vue'
 import Celebration from '@/components/Celebration.vue'
 import FarmMap from '@/components/farm/FarmMap.vue'
+import FarmSky from '@/components/farm/FarmSky.vue'
 import FarmArt from '@/components/farm/FarmArt.vue'
 import GoodIcon from '@/components/farm/GoodIcon.vue'
+import BuildDrawer from '@/components/farm/BuildDrawer.vue'
 import PlantSheet from '@/components/farm/PlantSheet.vue'
 import ItemSheet from '@/components/farm/ItemSheet.vue'
 import BarnSheet from '@/components/farm/BarnSheet.vue'
@@ -23,6 +26,7 @@ import KitchenSheet from '@/components/farm/KitchenSheet.vue'
 import OrdersSheet from '@/components/farm/OrdersSheet.vue'
 import PipSheet from '@/components/farm/PipSheet.vue'
 import FriendsSheet from '@/components/farm/FriendsSheet.vue'
+import WeatherSheet from '@/components/farm/WeatherSheet.vue'
 import FarmTour from '@/components/farm/FarmTour.vue'
 
 const farm = useFarmStore()
@@ -32,24 +36,19 @@ const router = useRouter()
 
 const mode = ref('farm') // farm | build
 const selected = ref(null)
-const placing = ref(null)
-const sheet = ref(null) // plant | item | barn | kitchen | orders | pip | friends
+const ghost = ref(null) // { type, x, y } something new waiting to be placed
+const sheet = ref(null) // plant | item | barn | kitchen | orders | pip | friends | weather
 const plantUid = ref(null)
 const itemUid = ref(null)
 const burst = ref(0)
 
 const xpFill = computed(() => (farm.state.level >= farm.MAX_FARM_LEVEL ? 1 : farm.state.xp / farm.xpNeeded))
-const inventory = computed(() => Object.entries(farm.state.inventory).filter(([, n]) => n > 0).map(([type, n]) => ({ type, n, name: PLACEABLE[type]?.name ?? type })))
 const pipLook = computed(() => ({ growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower, accessory: pip.currentAccessory }))
-const selectedObj = computed(() => (selected.value == null ? null : farm.find(selected.value)))
 const nextLand = computed(() => LAND[farm.state.land + 1] ?? null)
 const wishGood = computed(() => (farm.wish && !farm.wish.done ? farm.wish.good : null))
-
-function trayBox(type) {
-  const { w, h } = sizeOf(type)
-  const size = Math.max(w, h + 1) * 40
-  return `${(w * 40 - size) / 2} ${-40 + ((h + 1) * 40 - size) / 2} ${size} ${size}`
-}
+const phase = computed(() => getDayPhase(new Date(farm.now)))
+const sky = computed(() => weather.value?.kind ?? null)
+const kitchenReady = computed(() => farm.state.kitchen.some((k) => k && farm.now >= k.readyAt))
 
 // ---- little messages ----
 const toasts = ref([])
@@ -79,6 +78,7 @@ function onTap(uid) {
   if (mode.value === 'build') {
     selected.value = selected.value === uid ? null : uid
     playSound('select')
+    haptic('light')
     return
   }
   const kind = kindOf(o.type)
@@ -107,26 +107,16 @@ function onTap(uid) {
   sheet.value = 'item'
 }
 
-function onTapTile({ x, y }) {
-  if (mode.value !== 'build') return
-  if (placing.value) {
-    const placed = farm.place(placing.value, x, y)
-    if (placed) {
-      playSound('place')
-      haptic('light')
-      if (!farm.state.inventory[placing.value]) placing.value = null
-    } else {
-      playSound('miss')
-    }
-    return
-  }
-  selected.value = null
+function onTapTile() {
+  if (mode.value === 'build') selected.value = null
 }
 
 function onMove({ uid, x, y }) {
   if (farm.move(uid, x, y)) {
     playSound('place')
     haptic('light')
+  } else {
+    playSound('miss')
   }
 }
 
@@ -184,18 +174,72 @@ function feedProducer() {
 }
 
 // ---- build mode ----
-function toggleBuild() {
-  mode.value = mode.value === 'build' ? 'farm' : 'build'
+function setMode(m) {
+  mode.value = m
   selected.value = null
-  placing.value = null
-  playSound(mode.value === 'build' ? 'toggleOn' : 'toggleOff')
+  ghost.value = null
+  playSound(m === 'build' ? 'toggleOn' : 'toggleOff')
 }
 
-function putAway() {
-  const r = farm.store(selected.value)
+/** Somewhere free for a new thing: next to `near` if there's room, otherwise the first gap. */
+function spotFor(type, near = null) {
+  const { w, h } = sizeOf(type)
+  if (near) {
+    const tries = [
+      [near.x + w, near.y], [near.x, near.y + h], [near.x - w, near.y], [near.x, near.y - h],
+    ]
+    for (const [x, y] of tries) if (fits(farm.objects, type, x, y, farm.cols, farm.rows)) return { x, y }
+  }
+  return firstFree(farm.objects, type, farm.cols, farm.rows)
+}
+
+function pick(type) {
+  selected.value = null
+  const spot = spotFor(type)
+  if (!spot) {
+    toast('No room for that. Put something away or buy more land.')
+    playSound('miss')
+    return
+  }
+  ghost.value = { type, ...spot }
+  haptic('light')
+}
+
+// paths, fences and plots usually come in rows, so the preview stays for the next one
+const REPEATS = new Set(['plot', ...DECOR.filter((d) => d.cat === 'path' || d.cat === 'fence').map((d) => d.id)])
+
+function confirmPlace() {
+  const g = ghost.value
+  if (!g) return
+  const owned = farm.state.inventory[g.type] > 0
+  if (!owned && farm.priceOf(g.type) > pip.petals) {
+    toast('Not enough petals yet. Fill orders and play games to earn more.')
+    playSound('miss')
+    return
+  }
+  const placed = farm.buyAndPlace(g.type, g.x, g.y)
+  if (!placed) {
+    toast('That doesn’t fit there.')
+    playSound('miss')
+    return
+  }
+  playSound('place')
+  haptic('soft')
+  const again = REPEATS.has(g.type) && (farm.state.inventory[g.type] > 0 || (farm.priceOf(g.type) !== null && farm.priceOf(g.type) <= pip.petals))
+  const next = again ? spotFor(g.type, g) : null
+  ghost.value = next ? { type: g.type, ...next } : null
+}
+
+function onAction({ uid, action }) {
+  if (action === 'flip') {
+    if (farm.flip(uid)) playSound('swap')
+    return
+  }
+  const r = farm.store(uid)
   if (r.ok) {
     selected.value = null
     playSound('toggleOff')
+    toast('Put away. Find it under Yours.')
   } else {
     toast(r.reason === 'growing' ? 'Harvest it first.' : r.reason === 'busy' ? 'Wait until it’s finished.' : 'That one stays on the farm.')
   }
@@ -236,6 +280,14 @@ watch(
   },
 )
 
+// ---- rain outside waters the crops ----
+function checkRain() {
+  if (!['rain', 'storm'].includes(sky.value)) return
+  const n = farm.rainWater()
+  if (n) toast(`It’s raining where you are. ${n} ${n === 1 ? 'crop' : 'crops'} got a drink!`)
+}
+watch(sky, checkRain)
+
 // ---- treats ----
 function onFed(r) {
   pip.queueCelebration?.(r)
@@ -248,135 +300,147 @@ function goShop(tab) {
   router.push({ path: '/shop', query: { tab } })
 }
 
+// dock buttons draw a small piece of the farm
+const DOCK_ART = { barn: '0 -12 80 96', kitchen: '0 -12 80 96', board: '-2 -2 44 44' }
+
 onMounted(() => {
   farm.ensureWish()
+  refreshWeather().then(checkRain)
   const q = route.query
   if (q.place && farm.state.inventory[q.place]) {
     mode.value = 'build'
-    placing.value = q.place
+    pick(q.place)
+  } else if (q.build) {
+    mode.value = 'build'
   }
   if (['barn', 'kitchen', 'orders', 'friends'].includes(q.open)) sheet.value = q.open
-  if (q.place || q.open) router.replace({ query: {} })
+  if (q.place || q.open || q.build) router.replace({ query: {} })
 })
 </script>
 
 <template>
   <section class="page flex flex-col">
-    <PageHeader :eyebrow="`Farm level ${farm.state.level}`" :title="farm.name">
-      <button type="button" class="icon-btn" aria-label="Friends’ farms" @click="sheet = 'friends'">
-        <Icon name="friends" :size="19" :stroke="2" />
+    <!-- top bar: level, name, weather, petals -->
+    <header class="flex items-center gap-3">
+      <button type="button" class="relative h-14 w-14 shrink-0" :aria-label="`Farm level ${farm.state.level}`" @click="toast(farm.state.level >= farm.MAX_FARM_LEVEL ? 'Top farm level. Amazing!' : `${farm.xpNeeded - farm.state.xp} XP to level ${farm.state.level + 1}`)">
+        <svg viewBox="0 0 56 56" class="absolute inset-0 -rotate-90">
+          <circle cx="28" cy="28" r="24" fill="none" stroke="var(--color-sand-200)" stroke-width="5" />
+          <circle cx="28" cy="28" r="24" fill="none" stroke="var(--color-honey-400)" stroke-width="5" stroke-linecap="round" :stroke-dasharray="150.8" :stroke-dashoffset="150.8 * (1 - xpFill)" class="transition-[stroke-dashoffset] duration-700" />
+        </svg>
+        <span class="absolute inset-[7px] flex flex-col items-center justify-center rounded-full bg-surface shadow-soft">
+          <span class="text-[0.5rem] font-extrabold uppercase leading-none tracking-wider text-bark-400">Level</span>
+          <span class="font-display text-lg font-semibold leading-none text-bark-600">{{ farm.state.level }}</span>
+        </span>
       </button>
+      <div class="min-w-0 flex-1">
+        <h1 class="title-md truncate">{{ farm.name }}</h1>
+        <button type="button" class="mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-bark-400" @click="sheet = 'weather'">
+          <span>{{ SEASONS[season].icon }}</span> {{ SEASONS[season].name }}
+          <template v-if="weather">
+            <span class="opacity-50">·</span>
+            <Icon :name="WEATHER[weather.kind].icon" :size="13" :stroke="2.2" /> {{ weather.temp }}°
+          </template>
+          <Icon name="back" :size="11" :stroke="2.6" class="rotate-180 opacity-60" />
+        </button>
+      </div>
       <PetalBadge :count="pip.petals" size="sm" />
-    </PageHeader>
+    </header>
 
-    <!-- XP -->
-    <div class="mt-3 flex items-center gap-2.5">
-      <div class="h-2 flex-1 overflow-hidden rounded-full bg-sand-100">
-        <div class="h-full rounded-full bg-honey-400 transition-[width] duration-700" :style="{ width: `${xpFill * 100}%` }" />
+    <!-- the farm, with the countryside behind it -->
+    <div class="scene relative mt-4">
+      <FarmSky :phase="phase" :season="season" :weather="sky" />
+      <div class="relative -mt-12">
+        <FarmMap
+          :objects="farm.objects"
+          :rows="farm.rows"
+          :cols="farm.cols"
+          :now="farm.now"
+          :mode="mode"
+          :selected="selected"
+          :ghost="ghost"
+          :kitchen="farm.state.kitchen"
+          :orders-ready="farm.ordersReady"
+          :pip-look="pipLook"
+          :pip-sleeping="pip.asleep"
+          :wish-good="wishGood"
+          :highlight="tourHighlight"
+          :phase="phase"
+          :season="season"
+          :weather="sky"
+          @tap="onTap"
+          @tap-tile="onTapTile"
+          @move="onMove"
+          @ghost="(p) => (ghost = { ...ghost, ...p })"
+          @confirm="confirmPlace"
+          @cancel="ghost = null"
+          @action="onAction"
+        />
       </div>
-      <span class="text-xs font-extrabold tabular-nums text-bark-400">
-        {{ farm.state.level >= farm.MAX_FARM_LEVEL ? 'Max level' : `${farm.state.xp} / ${farm.xpNeeded} XP` }}
-      </span>
-    </div>
-
-    <!-- tools -->
-    <div class="no-scrollbar -mx-5 mt-3 overflow-x-auto px-5">
-      <div class="flex w-max gap-2 pb-1">
-        <button type="button" class="tool" @click="sheet = 'barn'">
-          <span class="text-base">🌾</span> Barn <span class="tabular-nums text-bark-400">{{ farm.barnUsed }}/{{ farm.barnCapacity }}</span>
-        </button>
-        <button type="button" class="tool" :class="{ 'is-hint': tour === 4 }" @click="sheet = 'kitchen'">
-          <span class="text-base">🍳</span> Kitchen
-        </button>
-        <button type="button" class="tool relative" :class="{ 'is-hint': tour === 3 }" @click="sheet = 'orders'">
-          <span class="text-base">📋</span> Orders
-          <span v-if="farm.ordersReady" class="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-clay-300 px-1 text-[0.6875rem] font-extrabold text-white">{{ farm.ordersReady }}</span>
-        </button>
-        <button type="button" class="tool" :class="{ 'is-on': mode === 'build', 'is-hint': tour === 5 }" @click="toggleBuild">
-          <Icon name="move" :size="16" :stroke="2.2" /> {{ mode === 'build' ? 'Done' : 'Arrange' }}
-        </button>
-        <button type="button" class="tool" @click="goShop('farm')">
-          <Icon name="shop" :size="16" :stroke="2.2" /> Shop
-        </button>
-      </div>
-    </div>
-
-    <!-- harvest everything -->
-    <Transition name="drop">
-      <button v-if="mode === 'farm' && farm.readyCount > 1" type="button" class="btn btn-primary mt-3 w-full gap-2!" data-sound="none" @click="harvestAll">
-        <span class="text-lg">🧺</span> Harvest everything ({{ farm.readyCount }})
-      </button>
-    </Transition>
-
-    <p v-if="mode === 'build'" class="mt-3 rounded-2xl bg-honey-100 px-4 py-2.5 text-center text-xs font-bold text-bark-500">
-      {{ placing ? `Tap a spot to place the ${PLACEABLE[placing].name.toLowerCase()}.` : 'Drag things to move them. Tap one to select it.' }}
-    </p>
-
-    <!-- the farm (with room above for the first row's roofs and treetops) -->
-    <div class="relative mt-4 pt-10">
-      <FarmMap
-        :objects="farm.objects"
-        :rows="farm.rows"
-        :cols="farm.cols"
-        :now="farm.now"
-        :mode="mode"
-        :selected="selected"
-        :placing="placing"
-        :kitchen="farm.state.kitchen"
-        :orders-ready="farm.ordersReady"
-        :pip-look="pipLook"
-        :pip-sleeping="pip.asleep"
-        :wish-good="wishGood"
-        :highlight="tourHighlight"
-        @tap="onTap"
-        @tap-tile="onTapTile"
-        @move="onMove"
-      />
       <Celebration :trigger="burst" :y="30" :count="30" :spread="180" />
     </div>
 
-    <button v-if="nextLand" type="button" class="mt-3 w-full rounded-2xl border border-dashed border-sand-300 py-3 text-xs font-bold text-bark-400" @click="goShop('farm')">
+    <p v-if="mode === 'build' && !ghost" class="mt-3 text-center text-xs font-bold text-bark-400">
+      Drag things to move them. Tap one to flip it or put it away.
+    </p>
+    <button v-else-if="nextLand && mode === 'farm'" type="button" class="land mt-3 w-full" @click="goShop('farm')">
+      <Icon name="plus" :size="15" :stroke="2.4" />
       {{ nextLand.level > farm.state.level ? `More land opens at farm level ${nextLand.level}` : 'Buy more land in the shop' }}
     </button>
 
-    <!-- room to scroll the bottom rows above the build tray -->
-    <div v-if="mode === 'build'" class="h-36 shrink-0" aria-hidden="true" />
+    <!-- room to scroll the bottom rows above the dock or drawer -->
+    <div class="shrink-0" :class="mode === 'build' ? 'h-44' : 'h-24'" aria-hidden="true" />
 
-    <!-- build tray -->
-    <Transition name="tray">
-      <div v-if="mode === 'build'" class="tray fixed inset-x-0 z-30 mx-auto max-w-lg px-4">
-        <div class="rounded-[1.5rem] border border-line bg-surface/95 p-3 shadow-float backdrop-blur-xl">
-          <div v-if="selectedObj" class="flex items-center gap-3">
-            <p class="min-w-0 flex-1 truncate font-display text-base font-semibold text-bark-600">{{ PLACEABLE[selectedObj.type]?.name }}</p>
-            <button type="button" class="btn btn-secondary btn-sm" @click="putAway">Put away</button>
-            <button type="button" class="btn btn-ghost btn-sm" @click="selected = null">Done</button>
-          </div>
-          <template v-else>
-            <p class="eyebrow mb-2">{{ inventory.length ? 'Ready to place' : 'Nothing waiting to be placed' }}</p>
-            <div v-if="inventory.length" class="no-scrollbar flex gap-2 overflow-x-auto">
-              <button
-                v-for="it in inventory"
-                :key="it.type"
-                type="button"
-                class="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border bg-cream"
-                :class="placing === it.type ? 'border-leaf-400 ring-2 ring-leaf-300/60' : 'border-line'"
-                :aria-label="it.name"
-                @click="placing = placing === it.type ? null : it.type"
-              >
-                <svg :viewBox="trayBox(it.type)" class="h-12 w-12 overflow-visible">
-                  <FarmArt :type="it.type" />
-                </svg>
-                <span class="absolute bottom-0.5 right-1 text-[0.6875rem] font-extrabold text-bark-500">×{{ it.n }}</span>
-              </button>
-            </div>
-            <button v-else type="button" class="btn btn-secondary btn-sm w-full" @click="goShop('decor')">Find decorations in the shop</button>
-          </template>
-        </div>
-      </div>
+    <!-- harvest everything -->
+    <Transition name="pop">
+      <button
+        v-if="mode === 'farm' && farm.readyCount > 1"
+        type="button"
+        class="harvest fixed left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-leaf-500 px-5 py-2.5 text-sm font-extrabold text-white shadow-float"
+        data-sound="none"
+        @click="harvestAll"
+      >
+        <span class="text-lg">🧺</span> Harvest all · {{ farm.readyCount }}
+      </button>
     </Transition>
 
+    <!-- the dock (farm) or the drawer (build) -->
+    <div class="bottom fixed inset-x-0 z-30 mx-auto max-w-lg px-3">
+      <Transition name="swap" mode="out-in">
+        <BuildDrawer v-if="mode === 'build'" key="build" :ghost="ghost" :season="season" @pick="pick" @done="setMode('farm')" />
+        <nav v-else key="dock" class="dock grid grid-cols-6 gap-1 rounded-[1.75rem] border border-line bg-surface/95 p-2 shadow-float backdrop-blur-xl" aria-label="Farm tools">
+          <button type="button" class="dock-btn" @click="sheet = 'barn'">
+            <span class="tile bg-clay-100"><svg :viewBox="DOCK_ART.barn" class="h-9 w-9"><FarmArt type="barn" /></svg></span>
+            <span class="label">Barn</span>
+            <span class="meter"><span :style="{ width: `${Math.min(100, (farm.barnUsed / farm.barnCapacity) * 100)}%` }" :class="{ full: farm.barnFull }" /></span>
+          </button>
+          <button type="button" class="dock-btn" :class="{ 'is-hint': tour === 4 }" @click="sheet = 'kitchen'">
+            <span class="tile bg-honey-100"><svg :viewBox="DOCK_ART.kitchen" class="h-9 w-9"><FarmArt type="kitchen" /></svg></span>
+            <span class="label">Kitchen</span>
+            <span v-if="kitchenReady" class="dot" />
+          </button>
+          <button type="button" class="dock-btn" :class="{ 'is-hint': tour === 3 }" @click="sheet = 'orders'">
+            <span class="tile bg-leaf-200/70"><svg :viewBox="DOCK_ART.board" class="h-8 w-8"><FarmArt type="board" /></svg></span>
+            <span class="label">Orders</span>
+            <span v-if="farm.ordersReady" class="badge">{{ farm.ordersReady }}</span>
+          </button>
+          <button type="button" class="dock-btn" :class="{ 'is-hint': tour === 5 }" @click="setMode('build')">
+            <span class="tile bg-water-100 text-water-500"><Icon name="move" :size="22" :stroke="2.2" /></span>
+            <span class="label">Build</span>
+          </button>
+          <button type="button" class="dock-btn" @click="goShop('farm')">
+            <span class="tile bg-petal-100 text-petal-500"><Icon name="shop" :size="22" :stroke="2.2" /></span>
+            <span class="label">Shop</span>
+          </button>
+          <button type="button" class="dock-btn" @click="sheet = 'friends'">
+            <span class="tile bg-sand-100 text-bark-500"><Icon name="friends" :size="22" :stroke="2.2" /></span>
+            <span class="label">Friends</span>
+          </button>
+        </nav>
+      </Transition>
+    </div>
+
     <!-- messages -->
-    <div class="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex flex-col items-center gap-1.5 px-4">
+    <div class="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex flex-col items-center gap-1.5 px-4" role="status" aria-live="polite">
       <TransitionGroup name="toast">
         <div v-for="t in toasts" :key="t.id" class="flex items-center gap-2 rounded-full bg-bark-600 px-4 py-2 text-sm font-bold text-[#FFFAF2] shadow-float">
           <GoodIcon v-if="t.icon" :id="t.icon" :size="20" />
@@ -411,14 +475,16 @@ onMounted(() => {
     />
     <PipSheet :open="sheet === 'pip'" @close="sheet = null" @fed="onFed" @barn="sheet = 'barn'" />
     <FriendsSheet :open="sheet === 'friends'" @close="sheet = null" />
+    <WeatherSheet :open="sheet === 'weather'" @close="sheet = null" @changed="checkRain" />
 
     <Modal :open="Boolean(farm.levelUp)" label="Farm level up" @close="farm.clearLevelUp()">
       <template v-if="farm.levelUp">
         <p class="eyebrow text-leaf-500!">Your farm grew</p>
         <h2 class="title-xl mt-1">Farm level {{ farm.levelUp.level }}!</h2>
-        <ul v-if="farm.levelUp.unlocks.length" class="mt-4 space-y-1.5 text-left">
+        <ul v-if="farm.levelUp.unlocks.length" class="mt-4 max-h-[40dvh] space-y-1.5 overflow-y-auto text-left">
           <li v-for="u in farm.levelUp.unlocks" :key="u.kind + u.id" class="flex items-center gap-2.5 rounded-xl bg-cream px-3 py-2 text-sm font-semibold text-bark-600">
             <GoodIcon v-if="GOODS[u.id]" :id="u.id" :size="22" />
+            <svg v-else-if="PLACEABLE[u.id]" viewBox="0 -40 40 80" class="h-7 w-[22px] overflow-visible"><FarmArt :type="u.id" /></svg>
             <span v-else class="text-lg">✨</span>
             <span class="flex-1">{{ u.name }}</span>
             <span class="text-[0.625rem] font-extrabold uppercase tracking-wider text-bark-400">{{ u.kind }}</span>
@@ -431,48 +497,133 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.tool {
+.scene {
+  border-radius: 1.75rem;
+}
+.land {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  height: 2.5rem;
-  padding: 0 0.9rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-line);
-  background: var(--color-surface);
-  font-size: 0.8125rem;
+  border-radius: 1rem;
+  border: 1.5px dashed var(--color-sand-300);
+  padding: 0.75rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: var(--color-bark-600);
-  box-shadow: var(--shadow-soft);
-  white-space: nowrap;
-  transition: transform 0.15s ease, background-color 0.2s ease;
+  color: var(--color-bark-400);
 }
-.tool:active {
-  transform: scale(0.96);
+.bottom {
+  bottom: calc(5.75rem + env(safe-area-inset-bottom));
 }
-.tool.is-hint {
-  border-color: var(--color-leaf-400);
+.harvest {
+  bottom: calc(11.25rem + env(safe-area-inset-bottom));
+}
+.dock-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0;
+  border-radius: 1rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.dock-btn:active .tile {
+  transform: scale(0.92);
+}
+.tile {
+  display: flex;
+  height: 2.9rem;
+  width: 2.9rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  transition: transform 0.15s ease;
+}
+.label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--color-bark-500);
+}
+.meter {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 22%;
+  right: 22%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  overflow: hidden;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-leaf-400);
+}
+.meter > span.full {
+  background: var(--color-clay-400);
+}
+.badge {
+  position: absolute;
+  top: -0.2rem;
+  right: 0.1rem;
+  display: flex;
+  height: 1.15rem;
+  min-width: 1.15rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--color-clay-400);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+.dot {
+  position: absolute;
+  top: 0;
+  right: 0.45rem;
+  height: 0.7rem;
+  width: 0.7rem;
+  border-radius: 999px;
+  background: var(--color-leaf-400);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% { transform: scale(1.25); }
+}
+.dock-btn.is-hint .tile {
   animation: hint-ring 1.4s ease-in-out infinite;
 }
 @keyframes hint-ring {
-  0%, 100% { box-shadow: var(--shadow-soft), 0 0 0 0 rgb(134 173 114 / 0.55); }
-  50% { box-shadow: var(--shadow-soft), 0 0 0 6px rgb(134 173 114 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(134 173 114 / 0.7); }
+  50% { box-shadow: 0 0 0 6px rgb(134 173 114 / 0); }
 }
-.tool.is-on {
-  background: var(--color-honey-100);
-  border-color: var(--color-honey-400);
+.swap-enter-active,
+.swap-leave-active {
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
-.tray {
-  bottom: calc(5.75rem + env(safe-area-inset-bottom));
-}
-.tray-enter-active,
-.tray-leave-active {
-  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-.tray-enter-from,
-.tray-leave-to {
+.swap-enter-from,
+.swap-leave-to {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(16px);
+}
+.pop-enter-active {
+  transition: opacity 0.25s ease, transform 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.pop-leave-active {
+  transition: opacity 0.2s ease;
+}
+.pop-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 12px) scale(0.85);
+}
+.pop-leave-to {
+  opacity: 0;
 }
 .toast-enter-active {
   transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
@@ -486,12 +637,5 @@ onMounted(() => {
 }
 .toast-leave-to {
   opacity: 0;
-}
-.drop-enter-active {
-  transition: opacity 0.25s ease, transform 0.35s ease;
-}
-.drop-enter-from {
-  opacity: 0;
-  transform: translateY(-6px);
 }
 </style>

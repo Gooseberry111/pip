@@ -21,8 +21,8 @@ const BOARDS = {
   big: { n: 5, k: 4, label: 'Big board', sub: '4 in a row' },
 }
 const LEVELS = {
-  easy: { label: 'Easy', random: 0.5, depth: { small: 1, big: 1 } },
-  medium: { label: 'Medium', random: 0.12, depth: { small: 3, big: 2 } },
+  easy: { label: 'Easy', random: 0.3, depth: { small: 2, big: 1 } },
+  medium: { label: 'Medium', random: 0.04, depth: { small: 5, big: 3 } },
   hard: { label: 'Hard', random: 0, depth: { small: 9, big: 4 } },
 }
 

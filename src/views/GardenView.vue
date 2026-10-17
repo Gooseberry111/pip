@@ -7,6 +7,9 @@ import Garden from '@/components/Garden.vue'
 import ItemPreview from '@/components/ItemPreview.vue'
 import Icon from '@/components/Icon.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import PhotoSheet from '@/components/PhotoSheet.vue'
+import { takePhoto } from '@/utils/photo'
+import { daysTogether } from '@/utils/timeOfDay'
 
 const pip = usePipStore()
 
@@ -29,6 +32,20 @@ const rows = computed(() =>
 function choose(category, id) {
   pip.equip(category, id)
   playSound('select')
+}
+
+// ---- photo mode ----
+const gardenEl = ref(null)
+const photo = ref(null)
+const flash = ref(false)
+async function snap() {
+  if (!gardenEl.value) return
+  flash.value = true
+  playSound('tap')
+  setTimeout(() => (flash.value = false), 350)
+  const days = daysTogether(pip.startedAt)
+  const blob = await takePhoto(gardenEl.value, { caption: pip.plantName, note: `Day ${days} together · Level ${pip.growthLevel}` })
+  if (blob) photo.value = { blob, name: pip.plantName }
 }
 
 // ---- renaming ----
@@ -66,6 +83,9 @@ function finishRename() {
         </form>
         <template v-else>{{ pip.plantName }}’s garden</template>
       </template>
+      <button type="button" class="icon-btn" aria-label="Take a photo" data-sound="none" @click="snap">
+        <Icon name="camera" :size="18" :stroke="2" />
+      </button>
       <button type="button" class="icon-btn" aria-label="Rename your plant" @click="startRename">
         <Icon name="pencil" :size="17" :stroke="2" />
       </button>
@@ -73,8 +93,11 @@ function finishRename() {
 
     <div class="mt-5 flex flex-col gap-5 md:flex-row md:items-start">
       <div class="mx-auto w-full max-w-[22rem] md:sticky md:top-6 md:mx-0 md:w-[22rem] md:shrink-0">
-        <Garden />
-        <p class="mt-3 text-center text-[0.8125rem] font-medium text-bark-400">Tap the little things in the garden. They like it.</p>
+        <div ref="gardenEl" class="relative">
+          <Garden />
+          <div class="shutter pointer-events-none absolute inset-0 rounded-[2rem] bg-white" :class="{ 'is-on': flash }" />
+        </div>
+        <p class="mt-3 text-center text-[0.8125rem] font-medium text-bark-400">Tap the little things in the garden. They like it. Use the camera to take a photo.</p>
       </div>
 
       <div class="card min-w-0 flex-1 divide-y divide-line overflow-hidden">
@@ -120,5 +143,17 @@ function finishRename() {
         </div>
       </div>
     </div>
+    <PhotoSheet :photo="photo" @close="photo = null" />
   </section>
 </template>
+
+<style scoped>
+.shutter {
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+.shutter.is-on {
+  opacity: 0.85;
+  transition: none;
+}
+</style>

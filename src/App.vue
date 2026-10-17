@@ -9,6 +9,9 @@ import { GOODS } from '@/data/farm'
 import { playSound } from '@/utils/sound'
 import { wakeMusic } from '@/utils/music'
 import { scheduleReminders } from '@/services/notifications'
+import { startNative, setAppBadge } from '@/services/native'
+import { handleBack } from '@/utils/backStack'
+import { useRouter, useRoute } from 'vue-router'
 import BottomNavigation from '@/components/BottomNavigation.vue'
 import BadgeEarned from '@/components/BadgeEarned.vue'
 import { badgeList } from '@/utils/badges'
@@ -16,6 +19,8 @@ import Onboarding from '@/components/Onboarding.vue'
 
 const pip = usePipStore()
 const farm = useFarmStore()
+const router = useRouter()
+const route = useRoute()
 
 // First visit: meet the seed before anything else.
 const onboarding = ref(!pip.hasStarted)
@@ -69,6 +74,13 @@ function onGifts(gifts) {
   }, helpNote.value ? 5200 : 0)
 }
 
+// the number on the app icon: things on the farm waiting for you
+watch(
+  () => (pip.hasStarted ? farm.readyCount + farm.ordersReady : 0),
+  (n) => setAppBadge(n),
+  { immediate: true },
+)
+
 // Reschedule gentle reminders whenever something they depend on changes.
 function reschedule() {
   scheduleReminders({
@@ -117,6 +129,18 @@ onMounted(() => {
   document.addEventListener('click', onTap, true)
   document.addEventListener('pointerdown', wakeMusic, { once: true })
   reschedule()
+  startNative({
+    // the phone's back button: close the newest sheet, then go back home, then leave the app
+    onBack: () => {
+      if (handleBack()) return true
+      if (route.path !== '/') {
+        router.push('/')
+        return true
+      }
+      return false
+    },
+    onResume: checkIn,
+  })
 })
 
 onBeforeUnmount(() => {

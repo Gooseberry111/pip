@@ -2,5 +2,22 @@
   "appId": "app.pip.companion",
   "appName": "Pip",
   "webDir": "dist",
-  "backgroundColor": "#FBF6EE"
+  "backgroundColor": "#FBF6EE",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchShowDuration": 3000,
+      "backgroundColor": "#FBF6EE",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "LIGHT"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  }
 }

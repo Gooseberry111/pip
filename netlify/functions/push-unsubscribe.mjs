@@ -1,7 +1,8 @@
 // Forgets a phone when reminders are turned off.
 import { store, keyFor, json } from '../lib/push.mjs'
+import { cors } from '../lib/cors.mjs'
 
-export default async (req) => {
+const handler = async (req) => {
   if (req.method !== 'POST') return json({ error: 'Use POST' }, 405)
   let body
   try {
@@ -13,5 +14,7 @@ export default async (req) => {
   await store().delete(keyFor(body.endpoint))
   return json({ ok: true })
 }
+
+export default cors(handler)
 
 export const config = { path: '/api/push/unsubscribe' }

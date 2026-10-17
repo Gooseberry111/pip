@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { backup, backupNow, turnOnBackup, turnOffBackup, fetchBackup, restoreBackup, formatCode, cleanCode, BACKUP_ERRORS } from '@/services/backup'
 import { usePipStore } from '@/stores/pip'
 import Icon from './Icon.vue'
+import { share as shareSheet } from '@/services/native'
 
 const pip = usePipStore()
 
@@ -60,15 +61,8 @@ async function copy() {
 
 async function share() {
   const text = `My Pip backup code: ${formatCode(backup.value.code)}`
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Pip backup code', text })
-      return
-    } catch {
-      // cancelled
-    }
-  }
-  copy()
+  const r = await shareSheet({ title: 'Pip backup code', text })
+  if (r === 'copied' || r === 'failed') copy()
 }
 
 async function lookUp() {

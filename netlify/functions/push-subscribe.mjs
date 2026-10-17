@@ -1,10 +1,11 @@
 // Saves (or updates) one phone's reminder settings: when to say hello, Pip's name,
 // the person's timezone, and when Pip will next get thirsty.
 import { store, keyFor, json, setupProblem } from '../lib/push.mjs'
+import { cors } from '../lib/cors.mjs'
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
-export default async (req) => {
+const handler = async (req) => {
   if (req.method !== 'POST') return json({ error: 'Use POST' }, 405)
   const problem = setupProblem()
   if (problem) return json({ error: problem }, 503)
@@ -51,5 +52,7 @@ export default async (req) => {
   }
   return json({ ok: true })
 }
+
+export default cors(handler)
 
 export const config = { path: '/api/push/subscribe' }

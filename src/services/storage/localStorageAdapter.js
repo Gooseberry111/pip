@@ -3,6 +3,8 @@
 //   save(data: object): Promise<void>
 //   clear(): Promise<void>
 
+import { durable } from '../native'
+
 const KEY = 'pip:v1'
 
 export function createLocalStorageAdapter(key = KEY) {
@@ -17,7 +19,9 @@ export function createLocalStorageAdapter(key = KEY) {
     },
     async save(data) {
       try {
-        localStorage.setItem(key, JSON.stringify(data))
+        const json = JSON.stringify(data)
+        localStorage.setItem(key, json)
+        durable.save(key, json)
       } catch {
         // Storage can be unavailable (private mode). Pip still works for this session.
       }
@@ -25,6 +29,7 @@ export function createLocalStorageAdapter(key = KEY) {
     async clear() {
       try {
         localStorage.removeItem(key)
+        durable.remove(key)
       } catch {
         // ignore
       }

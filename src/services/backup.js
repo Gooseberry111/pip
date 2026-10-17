@@ -1,6 +1,7 @@
 // Backups: a private recovery code that brings Pip and the farm back on any phone.
 // When backups are on, everything is saved online every few minutes (only if something changed).
 import { ref } from 'vue'
+import { durable } from './native'
 
 const META_KEY = 'pip:backup:v1'
 const PIP_KEY = 'pip:v1'
@@ -20,6 +21,7 @@ function readJSON(key) {
 function writeJSON(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
+    durable.save(key, JSON.stringify(value))
     return true
   } catch {
     return false
@@ -143,7 +145,10 @@ export function restoreBackup(code, data) {
   const pip = { ...data.pip, chat: current.chat ?? [], deviceId: current.deviceId }
   writeJSON(PIP_KEY, pip)
   if (data.farm) writeJSON(FARM_KEY, data.farm)
-  else localStorage.removeItem(FARM_KEY)
+  else {
+    localStorage.removeItem(FARM_KEY)
+    durable.remove(FARM_KEY)
+  }
   backup.value = { on: true, code: cleanCode(code), lastAt: Date.now(), status: '' }
   saveMeta()
   window.location.replace(window.location.pathname)

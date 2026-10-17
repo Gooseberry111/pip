@@ -286,6 +286,13 @@ export const useFarmStore = defineStore('farm', () => {
     return true
   }
 
+  /** Real rain outside waters every thirsty crop, once per crop. */
+  function rainWater() {
+    let n = 0
+    for (const o of state.value.objects) if (o.crop && !o.crop.watered && waterCrop(o.uid)) n++
+    return n
+  }
+
   /** Fertiliser halves the time left on a crop, tree or building. */
   function fertilise(uid) {
     const o = find(uid)
@@ -460,6 +467,22 @@ export const useFarmStore = defineStore('farm', () => {
     state.value.inventory = inv
     save()
     return o
+  }
+
+  /** Buy something and put it straight down where the preview was. */
+  function buyAndPlace(type, x, y) {
+    if (!fits(state.value.objects, type, x, y, cols, rows.value)) return null
+    if (!(state.value.inventory[type] > 0) && !buy(type)) return null
+    return place(type, x, y)
+  }
+
+  /** Turn a decoration, tree or animal home to face the other way. */
+  function flip(uid) {
+    const o = find(uid)
+    if (!o || kindOf(o.type) === 'plot' || kindOf(o.type) === 'fixed') return false
+    o.flip = !o.flip
+    save()
+    return true
   }
 
   function placeAnywhere(type) {
@@ -682,6 +705,7 @@ export const useFarmStore = defineStore('farm', () => {
         y: o.y,
         ...(o.crop ? { crop: { id: o.crop.id, plantedAt: o.crop.plantedAt, readyAt: o.crop.readyAt } } : {}),
         ...(o.readyAt ? { readyAt: o.readyAt } : {}),
+        ...(o.flip ? { flip: true } : {}),
       })),
       pip: { growth: pip.growthValue, pot: pip.currentPot, leaf: pip.currentLeaf, flower: pip.currentFlower, accessory: pip.currentAccessory },
       week: weekStats(),
@@ -703,9 +727,9 @@ export const useFarmStore = defineStore('farm', () => {
   return {
     state, ready, levelUp, now, cols, rows, objects, barnCapacity, barnUsed, barnFull, xpNeeded, plotCount, ownedTypes,
     availableCrops, name, readyCount, ordersReady, nextReadyAt, wish, deal,
-    load, save, onSave, tick, gainXp, clearLevelUp, sell, plant, plantAll, harvest, harvestAll, waterCrop, fertilise, startProducer,
+    load, save, onSave, tick, gainXp, clearLevelUp, sell, plant, plantAll, harvest, harvestAll, waterCrop, rainWater, fertilise, startProducer,
     cook, collectDish, feedPip, ensureWish, fulfilWish, refillOrders, fulfilOrder, skipOrder,
-    move, store, place, placeAnywhere, buy, priceOf, buyLand, upgradeBarn, upgradeKitchen, buyFertiliser, rename,
+    move, store, place, placeAnywhere, buyAndPlace, flip, buy, priceOf, buyLand, upgradeBarn, upgradeKitchen, buyFertiliser, rename,
     tourNext, tourFinish, applyGifts, packGift, unpackGift, giftsSentToday, claimCommunity, weekStats,
     setSharing, newFarmCode, rememberNeighbour, forgetNeighbour, applyHelps, helpedToday, noteHelp, snapshot, find,
     devReset, devXp,

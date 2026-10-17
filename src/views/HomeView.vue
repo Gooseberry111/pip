@@ -504,7 +504,7 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- Pip's corner -->
-    <HomeStage :phase="phase" class="relative mt-4 min-h-[15rem] flex-1">
+    <HomeStage :phase="phase" :scene="pip.currentBackground" class="relative mt-4 min-h-[15rem] flex-1">
       <div class="absolute inset-x-3 top-3 z-10">
         <PipStatus :message="message" />
       </div>

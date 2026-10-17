@@ -19,6 +19,13 @@ const LOOKS = {
   windowsill: { pot: 'cream', leaf: 'variegated', flower: 'tulip', deco: ['teacup', 'kitty'] },
   night: { pot: 'moon', leaf: 'starlight', flower: 'sunny', deco: ['starjar', 'snail'] },
   rainy: { pot: 'drip', leaf: 'rosy', flower: 'blossom', deco: ['lantern', 'mushroom'] },
+  beach: { pot: 'ocean', leaf: 'seaglass', flower: 'hibiscus', deco: ['pebbles', 'butterfly'] },
+  autumnwood: { pot: 'pumpkinpot', leaf: 'autumn', flower: 'marigold', deco: ['acorn', 'hedgehog'] },
+  snowy: { pot: 'cream', leaf: 'frost', flower: 'lily', deco: ['candle', 'kitty'] },
+  library: { pot: 'cocoa', leaf: 'classic', flower: 'rose', deco: ['books', 'teacup'] },
+  rooftop: { pot: 'charcoal', leaf: 'variegated', flower: 'cosmos', deco: ['fairylights', 'kitty'] },
+  greenhouse: { pot: 'terracotta', leaf: 'lime', flower: 'bluebell', deco: ['cactus', 'butterfly'] },
+  space: { pot: 'galaxy', leaf: 'starlight', flower: 'lavender', deco: ['crystal', 'starjar'] },
 }
 
 const look = computed(() => LOOKS[props.picture] ?? LOOKS.meadow)

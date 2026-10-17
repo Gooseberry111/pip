@@ -12,6 +12,7 @@
 // With no key at all, it answers { error: 'not-configured' } and the app uses Pip's own brain.
 import Anthropic from '@anthropic-ai/sdk'
 import { getStore } from '@netlify/blobs'
+import { cors } from '../lib/cors.mjs'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
 const GEMINI_FALLBACK = 'gemini-flash-latest' // always points at Google's current Flash model
@@ -165,7 +166,7 @@ async function askClaude(messages, pip) {
     .trim()
 }
 
-export default async (req) => {
+const handler = async (req) => {
   // GET tells the app whether an AI is set up (otherwise it uses Pip's own brain)
   if (req.method === 'GET') return json({ ai: provider() })
   if (req.method !== 'POST') return json({ error: 'method' }, 405)
@@ -221,5 +222,7 @@ export default async (req) => {
 
   return json({ reply, remaining: Math.max(0, DAILY_LIMIT - used - 1), ai })
 }
+
+export default cors(handler)
 
 export const config = { path: '/api/chat' }

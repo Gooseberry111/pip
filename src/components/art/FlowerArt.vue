@@ -17,6 +17,13 @@ const FLOWERS = {
   violet: { petals: 5, tip: '#C9B2E6', base: '#8F6FC2', center: '#F8E2A6', centerDark: '#E7B96A', w: 6.4, len: 8, round: true },
   cornflower: { petals: 9, tip: '#A9C8F0', base: '#5B86D4', center: '#4A5A84', centerDark: '#384669', w: 3.6, len: 10 },
   peony: { petals: 8, tip: '#FBDDE3', base: '#EFA3B4', center: '#F9E6B8', centerDark: '#EFC97D', w: 6.2, len: 9, round: true },
+  marigold: { petals: 14, tip: '#FBC46A', base: '#EE8A2E', center: '#C9651F', centerDark: '#9E4C14', w: 3.4, len: 9 },
+  bluebell: { petals: 6, tip: '#C9D8F6', base: '#7E9BE0', center: '#F4F0FF', centerDark: '#B9C6EE', w: 5.4, len: 8, round: true },
+  cosmos: { petals: 8, tip: '#FBD2E4', base: '#E97FAE', center: '#F6D36B', centerDark: '#E0A93E', w: 4.4, len: 11 },
+  lily: { petals: 6, tip: '#FFFFFF', base: '#F4EDE2', center: '#F2C36B', centerDark: '#D99A3A', w: 4.2, len: 12 },
+  rose: { petals: 7, tip: '#F28B95', base: '#C8344A', center: '#A3243A', centerDark: '#7E1A2C', w: 6, len: 8, round: true },
+  hibiscus: { petals: 5, tip: '#FFB39E', base: '#F05B5B', center: '#FBE38A', centerDark: '#E8B93E', w: 8, len: 10, round: true },
+  lavender: { petals: 10, tip: '#DCCBF3', base: '#A386D8', center: '#8A6BC4', centerDark: '#6A4FA3', w: 2.6, len: 8 },
 }
 
 const f = computed(() => FLOWERS[props.flower] ?? FLOWERS.daisy)

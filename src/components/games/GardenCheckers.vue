@@ -15,9 +15,9 @@ const emit = defineEmits(['close'])
 const pip = usePipStore()
 
 const LEVELS = {
-  easy: { label: 'Easy', depth: 1, noise: 0.35 },
-  medium: { label: 'Medium', depth: 3, noise: 0.08 },
-  hard: { label: 'Hard', depth: 7, noise: 0 },
+  easy: { label: 'Easy', depth: 2, noise: 0.22 },
+  medium: { label: 'Medium', depth: 5, noise: 0.03 },
+  hard: { label: 'Hard', depth: 12, noise: 0 },
 }
 const DRAW_AFTER = 50 // moves in a row with no jumps
 
@@ -156,7 +156,7 @@ function pipTurn() {
   thinking.value = true
   later(() => {
     const lvl = LEVELS[difficulty.value]
-    const move = chooseMove(board.value, -1, { depth: lvl.depth, noise: lvl.noise, timeMs: 650 })
+    const move = chooseMove(board.value, -1, { depth: lvl.depth, noise: lvl.noise, timeMs: difficulty.value === 'hard' ? 1300 : 700 })
     thinking.value = false
     if (move && phase.value === 'playing') commit(move)
   }, 380)

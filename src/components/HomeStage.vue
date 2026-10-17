@@ -3,12 +3,15 @@
 // floating motes of light and a wooden shelf for Pip to sit on.
 import { computed, useId } from 'vue'
 import { DAY_PHASES } from '@/utils/timeOfDay'
+import SceneBackground from './art/SceneBackground.vue'
 
 const props = defineProps({
   phase: { type: String, default: 'day' },
+  scene: { type: String, default: null }, // a scene from Pip's wardrobe; the windowsill is the sky view
 })
 
 const p = computed(() => DAY_PHASES[props.phase] ?? DAY_PHASES.day)
+const useScene = computed(() => Boolean(props.scene) && props.scene !== 'windowsill')
 const uid = useId()
 
 const stars = [
@@ -28,7 +31,15 @@ const motes = Array.from({ length: 11 }, (_, i) => ({
 
 <template>
   <div class="stage relative isolate overflow-hidden rounded-[2.25rem] shadow-soft" :class="{ 'is-dark': p.dark }">
-    <svg viewBox="0 0 360 440" preserveAspectRatio="xMidYMax slice" class="absolute inset-0 -z-10 h-full w-full" aria-hidden="true">
+    <!-- a chosen scene, softly lit for the time of day -->
+    <template v-if="useScene">
+      <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMax slice" class="absolute inset-0 -z-10 h-full w-full" aria-hidden="true">
+        <SceneBackground :scene="scene" />
+      </svg>
+      <div class="scene-tint pointer-events-none absolute inset-0 -z-10" :class="`is-${phase}`" aria-hidden="true" />
+    </template>
+
+    <svg v-else viewBox="0 0 360 440" preserveAspectRatio="xMidYMax slice" class="absolute inset-0 -z-10 h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient :id="`${uid}-sky`" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" :stop-color="p.skyTop" />
@@ -93,7 +104,7 @@ const motes = Array.from({ length: 11 }, (_, i) => ({
     </div>
 
     <!-- the shelf -->
-    <div class="absolute inset-x-0 bottom-0 -z-10 h-[17%]" aria-hidden="true">
+    <div v-if="!useScene" class="absolute inset-x-0 bottom-0 -z-10 h-[17%]" aria-hidden="true">
       <div class="h-[22%] w-full" :style="{ background: `linear-gradient(180deg, ${p.floorTop}, ${p.floor})` }" />
       <div class="shelf-front relative h-[78%] w-full" :style="{ background: `linear-gradient(180deg, ${p.floor}, ${p.floorEdge})` }" />
     </div>
@@ -108,6 +119,18 @@ const motes = Array.from({ length: 11 }, (_, i) => ({
     inset 0 0 0 1px rgb(255 255 255 / 0.45),
     0 1px 2px rgb(91 70 54 / 0.04),
     0 10px 30px rgb(91 70 54 / 0.09);
+}
+.scene-tint {
+  transition: background-color 2s ease;
+}
+.scene-tint.is-dawn {
+  background: rgb(255 190 150 / 0.12);
+}
+.scene-tint.is-dusk {
+  background: rgb(255 140 100 / 0.16);
+}
+.scene-tint.is-night {
+  background: rgb(30 45 100 / 0.3);
 }
 .shelf-front::before {
   content: '';

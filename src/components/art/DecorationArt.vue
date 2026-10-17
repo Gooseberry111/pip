@@ -203,6 +203,90 @@ watch(
       <path d="M-6 -22 Q-7 -12 -5 -5" stroke="#fff" stroke-width="1.2" fill="none" opacity="0.5" stroke-linecap="round" />
     </g>
 
+    <g v-else-if="decoration === 'acorn'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="9" ry="1.8" fill="#4A3426" opacity="0.1" />
+      <ellipse cx="0" cy="-8" rx="7" ry="8.5" fill="#C9935E" />
+      <ellipse cx="-2.5" cy="-10" rx="2" ry="3.5" fill="#fff" opacity="0.25" />
+      <path d="M-8.5 -13 Q0 -21 8.5 -13 Q0 -10 -8.5 -13Z" fill="#8C6A4F" />
+      <path d="M-6 -15 L6 -15 M-7 -13.5 L7 -13.5" stroke="#6E513B" stroke-width="0.6" />
+      <path d="M0 -18 Q1 -22 3 -23" stroke="#6E513B" stroke-width="1.4" fill="none" stroke-linecap="round" />
+    </g>
+
+    <g v-else-if="decoration === 'books'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="17" ry="2.2" fill="#4A3426" opacity="0.1" />
+      <rect x="-15" y="-7" width="30" height="7" rx="1.5" fill="#7FA6C9" />
+      <rect x="-13" y="-6" width="26" height="1.2" fill="#FFFCF5" opacity="0.6" />
+      <rect x="-13" y="-13.5" width="26" height="6.5" rx="1.5" fill="#E8A1A6" transform="rotate(-4 0 -10)" />
+      <rect x="-11" y="-20" width="22" height="6.5" rx="1.5" fill="#A9C79A" transform="rotate(3 0 -17)" />
+      <path d="M8 -22 L8 -14" stroke="#E35D4B" stroke-width="1.6" />
+      <g transform="translate(-4 -22)"><rect x="-3" y="-6" width="6" height="6" rx="1.5" fill="#FFFCF5" /><path d="M3 -4 Q6 -4 6 -2 Q6 0 3 0" stroke="#FFFCF5" stroke-width="1.2" fill="none" /></g>
+    </g>
+
+    <g v-else-if="decoration === 'candle'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="10" ry="2" fill="#4A3426" opacity="0.1" />
+      <ellipse cx="0" cy="-1.5" rx="9" ry="2.5" fill="#C9B08A" />
+      <rect x="-5" y="-20" width="10" height="18" rx="2" fill="#FBF2E2" />
+      <path d="M-5 -18 Q-2 -15 0 -18 Q2 -14 5 -18" fill="#F0E2CA" />
+      <path d="M0 -20 V-23" stroke="#5B4636" stroke-width="0.9" />
+      <circle cx="0" cy="-27" r="7" fill="#FBE3A0" opacity="0.35" class="glow" />
+      <path d="M0 -23 Q-2.8 -26 0 -31 Q2.8 -26 0 -23Z" fill="#F4B04A" class="flicker" />
+    </g>
+
+    <g v-else-if="decoration === 'cactus'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="11" ry="2" fill="#4A3426" opacity="0.1" />
+      <path d="M-8 -9 L8 -9 L6.5 0 L-6.5 0Z" fill="#E09C7D" />
+      <rect x="-9" y="-11" width="18" height="3" rx="1" fill="#E8AE93" />
+      <rect x="-4.5" y="-30" width="9" height="20" rx="4.5" fill="#86AD72" />
+      <path d="M-4.5 -18 H-8 Q-10 -18 -10 -21 V-25" stroke="#86AD72" stroke-width="4" fill="none" stroke-linecap="round" />
+      <path d="M4.5 -22 H7 Q9 -22 9 -25 V-27" stroke="#86AD72" stroke-width="4" fill="none" stroke-linecap="round" />
+      <circle cx="-1.6" cy="-22" r="0.8" fill="#3E2F25" /><circle cx="1.6" cy="-22" r="0.8" fill="#3E2F25" />
+      <path d="M-1.2 -19.5 Q0 -18.5 1.2 -19.5" stroke="#3E2F25" stroke-width="0.6" fill="none" stroke-linecap="round" />
+      <circle cx="0" cy="-31" r="2.2" fill="#F2A3B5" />
+    </g>
+
+    <g v-else-if="decoration === 'duckling'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="11" ry="2" fill="#4A3426" opacity="0.1" />
+      <ellipse cx="-1" cy="-6" rx="10" ry="6.5" fill="#F6D266" />
+      <path d="M-11 -7 Q-14 -10 -10 -11" fill="#F6D266" />
+      <circle cx="5" cy="-15" r="5.5" fill="#F6D266" />
+      <path d="M10 -15 L14 -14 L10 -12.5Z" fill="#EE9447" />
+      <circle cx="6.5" cy="-16" r="0.9" fill="#3E2F25" />
+      <path d="M-4 -7 Q0 -10 3 -6" stroke="#E5B93F" stroke-width="1.2" fill="none" stroke-linecap="round" />
+    </g>
+
+    <g v-else-if="decoration === 'musicbox'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="15" ry="2" fill="#4A3426" opacity="0.1" />
+      <rect x="-13" y="-12" width="26" height="12" rx="2" fill="#C49A6C" />
+      <rect x="-13" y="-12" width="26" height="3" fill="#B98C63" />
+      <path d="M-13 -12 L-11 -22 L11 -22 L13 -12" fill="#D9B48A" />
+      <circle cx="0" cy="-6" r="2.4" fill="#F2C66B" />
+      <path d="M13 -6 h3 v-2" stroke="#8C6A4F" stroke-width="1.4" fill="none" />
+      <g fill="#8C6A4F" class="notes">
+        <path d="M-6 -26 v-6 l4 -1 v6" stroke="#8C6A4F" stroke-width="0.8" fill="none" /><circle cx="-7" cy="-26" r="1.4" /><circle cx="-3" cy="-27" r="1.4" />
+        <path d="M6 -30 v-5" stroke="#8C6A4F" stroke-width="0.8" /><circle cx="5" cy="-30" r="1.3" />
+      </g>
+    </g>
+
+    <g v-else-if="decoration === 'hedgehog'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="13" ry="2" fill="#4A3426" opacity="0.1" />
+      <path d="M-13 -2 Q-14 -16 -2 -17 Q10 -17 12 -6 L13 -2Z" fill="#9C7351" />
+      <g stroke="#7A5A3F" stroke-width="1.1" stroke-linecap="round">
+        <path d="M-10 -10 l-3 -3 M-6 -14 l-2 -4 M-1 -16 l0 -4 M4 -15 l2 -4 M8 -12 l3 -3 M-8 -6 l-4 -1" />
+      </g>
+      <path d="M8 -8 Q16 -7 16 -2 L8 -2Z" fill="#F3DCC0" />
+      <circle cx="16" cy="-3" r="1.2" fill="#3E2F25" />
+      <path d="M10 -6 Q11 -5 12 -6" stroke="#3E2F25" stroke-width="0.7" fill="none" />
+    </g>
+
+    <g v-else-if="decoration === 'crystal'" class="deco-body">
+      <ellipse cx="0" cy="0" rx="12" ry="2" fill="#4A3426" opacity="0.1" />
+      <ellipse cx="0" cy="-1.5" rx="11" ry="3" fill="#B4A999" />
+      <path d="M-3 -2 L-6 -16 L-2 -26 L2 -16 L0 -2Z" fill="#C9B2E6" />
+      <path d="M-2 -26 L2 -16 L0 -2 L-1 -16Z" fill="#E4D7F4" />
+      <path d="M2 -2 L4 -14 L8 -20 L10 -12 L7 -2Z" fill="#A9C8F0" />
+      <path d="M-6 -2 L-9 -10 L-7 -15 L-4 -8 L-3 -2Z" fill="#F2A3B5" />
+      <circle cx="-4" cy="-22" r="1" fill="#fff" class="glow" />
+    </g>
     <g v-else-if="decoration === 'rainbow'" class="deco-body">
       <g fill="none" stroke-linecap="round" stroke-width="3.2" class="rainbow-arcs">
         <path d="M-26 0 A26 26 0 0 1 26 0" stroke="#EFB2A6" />
@@ -391,5 +475,27 @@ watch(
   .deco * {
     animation: none !important;
   }
+}
+.is-animated .flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flicker 0.5s ease-in-out infinite alternate;
+}
+@keyframes flicker {
+  to { transform: scale(0.88, 1.1); }
+}
+.is-animated .glow {
+  animation: deco-glow 2.6s ease-in-out infinite;
+}
+@keyframes deco-glow {
+  50% { opacity: 0.15; }
+}
+.is-animated .notes {
+  animation: notes 3s ease-in-out infinite;
+}
+@keyframes notes {
+  0% { opacity: 0; transform: translateY(3px); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
 }
 </style>

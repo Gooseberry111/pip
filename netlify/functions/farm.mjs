@@ -13,6 +13,7 @@
 // only as a hash, so nobody else can change a farm even if they know its code.
 import { getStore } from '@netlify/blobs'
 import { createHash } from 'node:crypto'
+import { cors } from '../lib/cors.mjs'
 
 const CODE = /^[A-HJ-NP-Z2-9]{6}$/
 const MAX_BYTES = 60_000
@@ -64,6 +65,7 @@ function sanitizeFarm(f) {
       y: Number(o.y) || 0,
       ...(o.crop ? { crop: { id: clean(o.crop.id, 20), plantedAt: Number(o.crop.plantedAt) || 0, readyAt: Number(o.crop.readyAt) || 0 } } : {}),
       ...(o.readyAt ? { readyAt: Number(o.readyAt) || 0 } : {}),
+      ...(o.flip ? { flip: true } : {}),
     })),
     week: {
       key: clean(f?.week?.key, 8),
@@ -82,7 +84,7 @@ function sanitizeFarm(f) {
   }
 }
 
-export default async (req) => {
+const handler = async (req) => {
   const url = new URL(req.url)
   const sub = url.pathname.replace(/^\/api\/farm\/?/, '')
   let store
@@ -201,5 +203,7 @@ export default async (req) => {
     return json({ error: 'server' }, 500)
   }
 }
+
+export default cors(handler)
 
 export const config = { path: ['/api/farm', '/api/farm/*'] }

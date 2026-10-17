@@ -7,6 +7,7 @@
 // if everyone helps a little. Phones are counted by a hash of their anonymous id.
 import { getStore } from '@netlify/blobs'
 import { createHash } from 'node:crypto'
+import { cors } from '../lib/cors.mjs'
 
 const PER_PLAYER = 20 // orders each person is expected to add in a week
 const MIN_GOAL = 60
@@ -26,7 +27,7 @@ function weekKey(date = new Date()) {
 
 const goalFor = (players) => Math.max(MIN_GOAL, players * PER_PLAYER)
 
-export default async (req) => {
+const handler = async (req) => {
   let store
   try {
     store = getStore({ name: 'pip-community', consistency: 'strong' })
@@ -63,5 +64,7 @@ export default async (req) => {
     return json({ error: 'server' }, 500)
   }
 }
+
+export default cors(handler)
 
 export const config = { path: '/api/community' }

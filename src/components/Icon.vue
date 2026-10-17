@@ -208,5 +208,37 @@ defineProps({
       <path d="M19 12a7 7 0 1 1-2.1-5" />
       <path d="M19 4.5V8h-3.5" />
     </template>
+    <template v-else-if="name === 'flip'">
+      <path d="M12 3v18" stroke-dasharray="2 2.5" />
+      <path d="M9 7 4 17h5Z" />
+      <path d="M15 7l5 10h-5Z" />
+    </template>
+    <template v-else-if="name === 'box'">
+      <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5Z" />
+      <path d="M4 8.5 12 13l8-4.5M12 13v7" />
+    </template>
+    <template v-else-if="name === 'camera'">
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5Z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </template>
+    <template v-else-if="name === 'plus'">
+      <path d="M12 5v14M5 12h14" />
+    </template>
+    <template v-else-if="name === 'download'">
+      <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" />
+      <path d="M5 19h14" />
+    </template>
+    <template v-else-if="name === 'leaf'">
+      <path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14Z" />
+      <path d="M5 19 13 11" />
+    </template>
+    <template v-else-if="name === 'snow'">
+      <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" />
+      <path d="M10 4.5 12 6l2-1.5M10 19.5 12 18l2 1.5" />
+    </template>
+    <template v-else-if="name === 'rain'">
+      <path d="M7 14a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.3 1.5A3.5 3.5 0 0 1 17 14Z" />
+      <path d="M9 17l-1 3M13 17l-1 3M17 17l-1 3" />
+    </template>
   </svg>
 </template>

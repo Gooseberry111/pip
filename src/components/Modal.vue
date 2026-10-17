@@ -1,6 +1,7 @@
 <script setup>
 // A soft, centred card over a blurred backdrop. Used for special moments.
 import { onBeforeUnmount, watch } from 'vue'
+import { onBack } from '@/utils/backStack'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -14,16 +15,26 @@ function onKey(e) {
   if (e.key === 'Escape' && props.dismissible) emit('close')
 }
 
+let offBack = null
 watch(
   () => props.open,
   (open) => {
-    if (open) window.addEventListener('keydown', onKey)
-    else window.removeEventListener('keydown', onKey)
+    offBack?.()
+    offBack = null
+    if (open) {
+      window.addEventListener('keydown', onKey)
+      offBack = onBack(() => props.dismissible && emit('close'))
+    } else {
+      window.removeEventListener('keydown', onKey)
+    }
   },
   { immediate: true },
 )
 
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  offBack?.()
+})
 </script>
 
 <template>

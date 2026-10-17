@@ -8,6 +8,9 @@ import { router } from './router'
 import { usePipStore } from './stores/pip'
 import { useFarmStore } from './stores/farm'
 import { registerServiceWorker } from './services/webPush'
+import { durable, routeApiCalls } from './services/native'
+
+routeApiCalls()
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -27,7 +30,8 @@ if (import.meta.env.DEV) {
   window.__farm = { store: farm, xp: farm.devXp, reset: farm.devReset }
 }
 
-pip.load().then(() => farm.load()).then(() => app.mount('#app'))
+// in the phone app, put back a save the phone cleared, before loading it
+durable.restore().then(() => pip.load()).then(() => farm.load()).then(() => app.mount('#app'))
 
 // The service worker receives gentle reminders (only needed in a real browser, not the phone app).
 if (!window.Capacitor?.isNativePlatform?.()) registerServiceWorker()

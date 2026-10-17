@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, defineAsyncComponent } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePipStore } from '@/stores/pip'
 import { DAILY_TASKS } from '@/data/daily'
@@ -18,9 +18,14 @@ import {
   RHYTHM_LEVELS,
   HOTEL_LEVELS,
   POP_LEVELS,
+  GOLF_LEVELS,
+  FISHING_LEVELS,
+  SUDOKU_LEVELS,
+  TILES_LEVELS,
 } from '@/data/games'
-import { PICTURE_LEVELS, SEARCH_LEVELS } from '@/data/words'
 import { haptic } from '@/utils/haptics'
+import { keepAwake } from '@/services/native'
+import { onBack } from '@/utils/backStack'
 import Icon from '@/components/Icon.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import PetalBadge from '@/components/PetalBadge.vue'
@@ -46,6 +51,10 @@ const GAME_LOADERS = {
   BugHotel: () => import('@/components/games/BugHotel.vue'),
   PetalPop: () => import('@/components/games/PetalPop.vue'),
   LeafWords: () => import('@/components/games/LeafWords.vue'),
+  MiniGolf: () => import('@/components/games/MiniGolf.vue'),
+  PondFishing: () => import('@/components/games/PondFishing.vue'),
+  SeedSudoku: () => import('@/components/games/SeedSudoku.vue'),
+  GardenTiles: () => import('@/components/games/GardenTiles.vue'),
 }
 const lazyGame = (name) => defineAsyncComponent(GAME_LOADERS[name])
 const BreatheWithPip = lazyGame('BreatheWithPip')
@@ -63,12 +72,27 @@ const RainRhythm = lazyGame('RainRhythm')
 const BugHotel = lazyGame('BugHotel')
 const PetalPop = lazyGame('PetalPop')
 const LeafWords = lazyGame('LeafWords')
+const MiniGolf = lazyGame('MiniGolf')
+const PondFishing = lazyGame('PondFishing')
+const SeedSudoku = lazyGame('SeedSudoku')
+const GardenTiles = lazyGame('GardenTiles')
 
 const pip = usePipStore()
 const router = useRouter()
 const route = useRoute()
 
 const activeGame = ref(null)
+// while a game is open: keep the screen on, and let the back button close the game
+let offBack = null
+watch(activeGame, (g) => {
+  keepAwake(Boolean(g))
+  offBack?.()
+  offBack = g ? onBack(() => (activeGame.value = null)) : null
+})
+onBeforeUnmount(() => {
+  keepAwake(false)
+  offBack?.()
+})
 const packetOpen = ref(false)
 const revealed = ref(null)
 const soonTapped = ref(null)
@@ -92,6 +116,10 @@ const LEVEL_COUNTS = {
   rhythm: RHYTHM_LEVELS.length,
   hotel: HOTEL_LEVELS.length,
   pop: POP_LEVELS.length,
+  golf: GOLF_LEVELS.length,
+  fishing: FISHING_LEVELS.length,
+  sudoku: SUDOKU_LEVELS.length,
+  tiles: TILES_LEVELS.length,
 }
 const ART_BG = {
   rain: '#D7E6EC',
@@ -109,6 +137,10 @@ const ART_BG = {
   hotel: '#F3E9DA',
   pop: '#F9E6EA',
   words: '#E4EED9',
+  golf: '#E2EEDC',
+  fishing: '#DCEAF0',
+  sudoku: '#F1EBDD',
+  tiles: '#EAF1E4',
 }
 
 // the Play tab, in sections. An odd one out at the top of a section gets a wide tile.
@@ -135,14 +167,20 @@ const GAME_COMPONENTS = {
   hotel: BugHotel,
   pop: PetalPop,
   words: LeafWords,
+  golf: MiniGolf,
+  fishing: PondFishing,
+  sudoku: SeedSudoku,
+  tiles: GardenTiles,
 }
 
 function meta(game) {
+  // levels go on forever, so show how far you've got and the stars so far
   if (game.id === 'words') {
     const stars = pip.totalStars('words') + pip.totalStars('search')
-    return `${stars} / ${(PICTURE_LEVELS.length + SEARCH_LEVELS.length) * 3}`
+    const reached = Math.max(pip.levelProgress('words').unlocked, pip.levelProgress('search').unlocked)
+    return `Level ${reached} · ${stars}`
   }
-  if (game.levels) return `${pip.totalStars(game.id)} / ${LEVEL_COUNTS[game.id] * 3}`
+  if (game.levels) return `Level ${Math.min(pip.levelProgress(game.id).unlocked, LEVEL_COUNTS[game.id])} · ${pip.totalStars(game.id)}`
   if (game.id === 'tac') return 'Easy, medium, hard'
   if (game.id === 'checkers') return 'Classic rules'
   if (game.id === 'song') return pip.bestScores.song ? `Best ${pip.bestScores.song} notes` : 'New'
@@ -274,6 +312,7 @@ function tapSoon(id) {
           >
             {{ game.tag }}
           </span>
+          <span v-if="game.isNew && !pip.totalStars(game.id)" class="absolute right-2.5 top-2.5 rounded-full bg-clay-400 px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-white shadow-soft">New</span>
         </div>
         <div class="px-3.5 pb-3.5 pt-3">
           <p class="font-display text-[1.0625rem] font-semibold leading-tight text-bark-600">{{ game.title }}</p>
@@ -319,11 +358,11 @@ function tapSoon(id) {
     </div>
 
     <!-- coming soon -->
-    <div class="mt-8 flex items-baseline justify-between">
+    <div v-if="COMING_SOON.length" class="mt-8 flex items-baseline justify-between">
       <h2 class="title-md">Coming soon</h2>
       <span class="eyebrow">Growing in the greenhouse</span>
     </div>
-    <div class="no-scrollbar -mx-5 mt-3 overflow-x-auto px-5 pb-1">
+    <div v-if="COMING_SOON.length" class="no-scrollbar -mx-5 mt-3 overflow-x-auto px-5 pb-1">
       <div class="flex w-max gap-3">
         <button
           v-for="game in COMING_SOON"

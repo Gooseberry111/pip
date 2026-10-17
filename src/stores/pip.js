@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getStorage } from '@/services/storage'
+import { durable } from '@/services/native'
 import { ITEMS, DEFAULT_LOADOUT, MAX_DECORATIONS, PACKET_COST, itemsUnlockedAtLevel, packetItems, findItem } from '@/data/items'
 import { DAILY_TASKS, todayKey } from '@/data/daily'
 import { levelReward } from '@/data/rewards'
@@ -75,6 +76,10 @@ const GAME_NAMES = {
   firefly: 'Firefly Night',
   glide: 'Seed Glide',
   puzzle: 'Bloom Puzzle',
+  golf: 'Mini Golf',
+  fishing: 'Pond Fishing',
+  sudoku: 'Seed Sudoku',
+  tiles: 'Garden Tiles',
 }
 const MILESTONE_DAYS = [7, 30, 100, 365]
 
@@ -858,6 +863,8 @@ export const usePipStore = defineStore('pip', () => {
       localStorage.removeItem('pip:farm:v1')
       // forget the backup code here, so a fresh seed never overwrites the old backup
       localStorage.removeItem('pip:backup:v1')
+      durable.remove('pip:farm:v1')
+      durable.remove('pip:backup:v1')
     } catch {
       // ignore
     }
