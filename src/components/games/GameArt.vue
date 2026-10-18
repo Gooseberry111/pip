@@ -251,6 +251,54 @@ defineProps({
         <rect width="19" height="18" rx="4" fill="#FFF8EC" /><circle cx="9.5" cy="9" r="5" fill="#E35D4B" />
       </g>
     </g>
+    <!-- Seed Drop -->
+    <g v-else-if="game === 'drop'">
+      <rect width="160" height="110" fill="#EEF3E6" />
+      <rect x="38" y="14" width="84" height="76" rx="10" fill="#B98C63" />
+      <g v-for="r in 4" :key="r">
+        <circle v-for="c in 5" :key="c" :cx="38 + c * 14" :cy="16 + r * 16" r="5.6" :fill="[[0,0,0,0,0],[0,0,2,0,0],[0,1,2,1,0],[1,2,1,2,1]][r - 1][c - 1] === 1 ? '#86AD72' : [[0,0,0,0,0],[0,0,2,0,0],[0,1,2,1,0],[1,2,1,2,1]][r - 1][c - 1] === 2 ? '#E48C9C' : '#7A5A3F'" />
+      </g>
+      <circle cx="80" cy="8" r="5.6" fill="#86AD72" />
+    </g>
+
+    <!-- Flower Flip -->
+    <g v-else-if="game === 'flip'">
+      <rect width="160" height="110" fill="#E4EED9" />
+      <rect x="40" y="12" width="80" height="80" rx="8" fill="#6E9E5C" />
+      <g v-for="r in 4" :key="r">
+        <rect v-for="c in 4" :key="c" :x="42 + (c - 1) * 19.5" :y="14 + (r - 1) * 19.5" width="18" height="18" rx="3" :fill="(r + c) % 2 ? '#8FBC76' : '#94C27B'" />
+      </g>
+      <g v-for="(f, k) in [[2, 2, 1], [3, 2, 2], [2, 3, 2], [3, 3, 1], [1, 2, 2]]" :key="`f${k}`" :transform="`translate(${42 + (f[0] - 1) * 19.5 + 9} ${14 + (f[1] - 1) * 19.5 + 9})`">
+        <circle v-for="a in [0, 72, 144, 216, 288]" :key="a" cx="0" cy="-4.5" r="3.6" :fill="f[2] === 1 ? '#FFFDF8' : '#E05A7A'" :transform="`rotate(${a})`" />
+        <circle r="2.6" :fill="f[2] === 1 ? '#F2B544' : '#FBE3A0'" />
+      </g>
+    </g>
+
+    <!-- Garden Fences -->
+    <g v-else-if="game === 'fences'">
+      <rect width="160" height="110" fill="#F1EBDD" />
+      <rect x="44" y="14" width="72" height="72" rx="8" fill="#A9CC88" />
+      <rect x="52" y="22" width="26" height="26" fill="#6FA35B" opacity="0.25" />
+      <rect x="82" y="52" width="26" height="26" fill="#E05A7A" opacity="0.25" />
+      <path d="M50 20 H80 V50 H50Z M80 50 H110 V80 H80Z" stroke="#8C6A4F" stroke-width="3" fill="none" />
+      <path d="M80 20 H110 M50 50 V80" stroke="#E05A7A" stroke-width="3" />
+      <g fill="#8C6A4F"><circle v-for="k in 9" :key="k" :cx="50 + ((k - 1) % 3) * 30" :cy="20 + Math.floor((k - 1) / 3) * 30" r="3.4" /></g>
+      <text x="58" y="42" font-size="14">🌱</text><text x="88" y="72" font-size="14">🌸</text>
+    </g>
+
+    <!-- Vines and Ladders -->
+    <g v-else-if="game === 'vines'">
+      <rect width="160" height="110" fill="#E4EEDC" />
+      <g v-for="r in 5" :key="r">
+        <rect v-for="c in 6" :key="c" :x="35 + (c - 1) * 15" :y="10 + (r - 1) * 18" width="15" height="18" :fill="(r + c) % 2 ? '#BFDDA4' : '#D3E8BE'" />
+      </g>
+      <path d="M50 92 L70 30 M58 92 L78 30" stroke="#B98C63" stroke-width="3" stroke-linecap="round" />
+      <path d="M52 84 H60 M55 72 H63 M59 60 H67 M63 48 H71 M67 36 H75" stroke="#D9B48A" stroke-width="2" />
+      <path d="M110 20 Q130 50 100 86" stroke="#4F8A3E" stroke-width="4" fill="none" stroke-linecap="round" />
+      <circle cx="110" cy="20" r="5" fill="#6E9E5C" />
+      <rect x="120" y="70" width="18" height="18" rx="4" fill="#FFFDF8" stroke="#E2D6C6" />
+      <circle cx="125" cy="75" r="2" fill="#3A2D23" /><circle cx="133" cy="83" r="2" fill="#3A2D23" /><circle cx="129" cy="79" r="2" fill="#3A2D23" />
+    </g>
   </svg>
 </template>
 

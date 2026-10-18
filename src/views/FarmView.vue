@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useFarmStore } from '@/stores/farm'
 import { usePipStore } from '@/stores/pip'
 import { GOODS, PLACEABLE, LAND, DECOR } from '@/data/farm'
-import { cropById, kindOf, sizeOf, fits, firstFree } from '@/utils/farmLogic'
+import { cropById, kindOf, sizeOf, fits, firstFree, treeById, producerById } from '@/utils/farmLogic'
 import { getDayPhase, SEASONS } from '@/utils/timeOfDay'
 import { weather, season, refreshWeather, WEATHER } from '@/services/weather'
 import { playSound } from '@/utils/sound'
@@ -15,6 +15,7 @@ import Icon from '@/components/Icon.vue'
 import Modal from '@/components/Modal.vue'
 import Celebration from '@/components/Celebration.vue'
 import FarmMap from '@/components/farm/FarmMap.vue'
+import Farm3D from '@/components/farm/Farm3D.vue'
 import FarmSky from '@/components/farm/FarmSky.vue'
 import FarmArt from '@/components/farm/FarmArt.vue'
 import GoodIcon from '@/components/farm/GoodIcon.vue'
@@ -50,25 +51,76 @@ const phase = computed(() => getDayPhase(new Date(farm.now)))
 const sky = computed(() => weather.value?.kind ?? null)
 const kitchenReady = computed(() => farm.state.kitchen.some((k) => k && farm.now >= k.readyAt))
 
-// ---- little messages ----
-const toasts = ref([])
-let toastId = 0
-function toast(text, icon = null) {
-  const id = ++toastId
-  toasts.value = [...toasts.value.slice(-2), { id, text, icon }]
-  setTimeout(() => (toasts.value = toasts.value.filter((t) => t.id !== id)), 2400)
+// ---- the 3D farm (or the flat one, on phones without 3D graphics) ----
+function supports3D() {
+  try {
+    const c = document.createElement('canvas')
+    return Boolean(c.getContext('webgl2') || c.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+const use3d = ref(supports3D())
+const farmView = ref(null)
+
+// ---- feedback: rewards float up over the thing that made them; warnings sit quietly above the dock
+const note = ref('')
+let noteTimer = null
+function say(text) {
+  note.value = text
+  clearTimeout(noteTimer)
+  noteTimer = setTimeout(() => (note.value = ''), 2600)
+}
+function popAt(uid, text, icon = null, bad = false) {
+  farmView.value?.pop?.(uid, text, icon, bad)
 }
 
-function afterGain(r) {
+function afterGain(r, uid = null) {
   if (r?.full) {
-    toast('The barn is full. Sell or cook something first.')
+    if (uid != null) popAt(uid, 'Barn full', null, true)
+    say('The barn is full. Sell or cook something first.')
     playSound('miss')
     return
   }
   if (!r?.good) return
-  toast(`+${r.amount} ${GOODS[r.good].name}${r.xp ? ` · +${r.xp} XP` : ''}`, r.good)
+  if (uid != null) popAt(uid, `+${r.amount}${r.xp ? ` · ${r.xp} XP` : ''}`, r.good)
   playSound('catch', true, { combo: 3 })
   haptic('light')
+}
+
+// ---- tools: plant one crop on the plots you tap or swipe, or water everything ----
+const tool = ref(null) // { kind: 'plant', crop }
+const thirsty = computed(() => farm.objects.filter((o) => o.crop && !o.crop.watered && farm.now < o.crop.readyAt))
+
+function onPaint(uid) {
+  const t = tool.value
+  const o = farm.find(uid)
+  if (!t || !o || o.type !== 'plot') return
+  if (o.crop && farm.now >= o.crop.readyAt) return afterGain(farm.harvest(uid), uid)
+  if (o.crop) return
+  const r = farm.plant(uid, t.crop)
+  if (r.ok) {
+    popAt(uid, cropById[t.crop].seed ? `-${cropById[t.crop].seed}` : 'Planted', t.crop)
+    playSound('place', true, { high: true })
+    haptic('light')
+  } else if (r.reason === 'petals') {
+    popAt(uid, 'No petals', null, true)
+    say('Not enough petals for more seeds.')
+    tool.value = null
+  }
+}
+
+function waterAll() {
+  const list = thirsty.value
+  let n = 0
+  for (const o of list) if (farm.waterCrop(o.uid)) {
+    n++
+    popAt(o.uid, '', 'water')
+  }
+  if (n) {
+    playSound('water')
+    haptic('soft')
+  }
 }
 
 // ---- tapping things on the farm ----
@@ -85,7 +137,7 @@ function onTap(uid) {
   if (o.type === 'barn') return (sheet.value = 'barn')
   if (o.type === 'kitchen') {
     const ready = farm.state.kitchen.findIndex((k) => k && farm.now >= k.readyAt)
-    if (ready >= 0) return afterGain(farm.collectDish(ready))
+    if (ready >= 0) return afterGain(farm.collectDish(ready), uid)
     return (sheet.value = 'kitchen')
   }
   if (o.type === 'board') return (sheet.value = 'orders')
@@ -96,9 +148,15 @@ function onTap(uid) {
       sheet.value = 'plant'
       return
     }
-    if (farm.now >= o.crop.readyAt) return afterGain(farm.harvest(uid))
+    if (farm.now >= o.crop.readyAt) return afterGain(farm.harvest(uid), uid)
+    // tapping a growing crop gives it a drink
+    if (!o.crop.watered && farm.waterCrop(uid)) {
+      popAt(uid, '', 'water')
+      playSound('water')
+      return
+    }
   }
-  if ((kind === 'tree' || kind === 'producer') && o.readyAt && farm.now >= o.readyAt) return afterGain(farm.harvest(uid))
+  if ((kind === 'tree' || kind === 'producer') && o.readyAt && farm.now >= o.readyAt) return afterGain(farm.harvest(uid), uid)
   if (kind === 'decor') {
     playSound('boop')
     return
@@ -121,48 +179,55 @@ function onMove({ uid, x, y }) {
 }
 
 // ---- planting ----
+// choosing a crop plants the plot you tapped, then keeps the seeds in hand:
+// tap or swipe over more empty plots to plant those too, then tap Done
 function plant(cropId) {
   const r = farm.plant(plantUid.value, cropId)
+  sheet.value = null
   if (r.ok) {
     playSound('place')
     haptic('light')
-    sheet.value = null
+    popAt(plantUid.value, 'Planted', cropId)
+    if (use3d.value && farm.objects.some((o) => o.type === 'plot' && !o.crop)) tool.value = { kind: 'plant', crop: cropId }
   } else if (r.reason === 'petals') {
-    toast('Not enough petals for those seeds.')
+    say('Not enough petals for those seeds.')
   }
 }
 
 function plantAll(cropId) {
+  const before = new Set(farm.objects.filter((o) => o.crop).map((o) => o.uid))
   const n = farm.plantAll(cropId)
   if (n) {
-    toast(`Planted ${n} ${cropById[cropId].name.toLowerCase()}`, cropId)
+    for (const o of farm.objects) if (o.crop && !before.has(o.uid)) popAt(o.uid, '', cropId)
     playSound('place')
   }
   sheet.value = null
 }
 
 function harvestAll() {
+  const t = farm.now
+  const ready = farm.objects.filter((o) => (o.crop && t >= o.crop.readyAt) || (!o.crop && o.readyAt && t >= o.readyAt && (treeById[o.type] || producerById[o.type])))
+  const goods = new Map(ready.map((o) => [o.uid, o.crop ? o.crop.id : treeById[o.type]?.fruit ?? producerById[o.type]?.makes]))
   const { got, full } = farm.harvestAll()
-  const kinds = Object.keys(got)
-  if (kinds.length) {
-    toast(kinds.map((id) => `+${got[id]} ${GOODS[id].name}`).join(', '), kinds[0])
+  if (Object.keys(got).length) {
+    for (const o of ready) if (!farm.find(o.uid)?.crop || !full) popAt(o.uid, '+', goods.get(o.uid))
     playSound('catch', true, { combo: 6 })
     haptic('success')
   }
-  if (full) setTimeout(() => toast('The barn is full. Sell or cook to make room.'), 400)
+  if (full) say('The barn is full. Sell or cook to make room.')
 }
 
 // ---- item sheet actions ----
 function water() {
   if (farm.waterCrop(itemUid.value)) {
     playSound('water')
-    toast('Watered. Growing quicker!')
+    popAt(itemUid.value, '', 'water')
   }
 }
 function fertilise() {
   if (farm.fertilise(itemUid.value)) {
     playSound('grow')
-    toast('Fertilised. Half the time left!')
+    popAt(itemUid.value, 'Half the wait', null)
   }
 }
 function feedProducer() {
@@ -178,6 +243,7 @@ function setMode(m) {
   mode.value = m
   selected.value = null
   ghost.value = null
+  tool.value = null
   playSound(m === 'build' ? 'toggleOn' : 'toggleOff')
 }
 
@@ -197,7 +263,7 @@ function pick(type) {
   selected.value = null
   const spot = spotFor(type)
   if (!spot) {
-    toast('No room for that. Put something away or buy more land.')
+    say('No room for that. Put something away or buy more land.')
     playSound('miss')
     return
   }
@@ -213,13 +279,13 @@ function confirmPlace() {
   if (!g) return
   const owned = farm.state.inventory[g.type] > 0
   if (!owned && farm.priceOf(g.type) > pip.petals) {
-    toast('Not enough petals yet. Fill orders and play games to earn more.')
+    say('Not enough petals yet. Fill orders and play games to earn more.')
     playSound('miss')
     return
   }
   const placed = farm.buyAndPlace(g.type, g.x, g.y)
   if (!placed) {
-    toast('That doesn’t fit there.')
+    say('That doesn’t fit there.')
     playSound('miss')
     return
   }
@@ -239,9 +305,8 @@ function onAction({ uid, action }) {
   if (r.ok) {
     selected.value = null
     playSound('toggleOff')
-    toast('Put away. Find it under Yours.')
   } else {
-    toast(r.reason === 'growing' ? 'Harvest it first.' : r.reason === 'busy' ? 'Wait until it’s finished.' : 'That one stays on the farm.')
+    say(r.reason === 'growing' ? 'Harvest it first.' : r.reason === 'busy' ? 'Wait until it’s finished.' : 'That one stays on the farm.')
   }
 }
 
@@ -263,7 +328,7 @@ watch(sheet, (s) => {
 watch(mode, (m) => {
   if (m === 'build' && tour.value === 5) {
     farm.tourFinish(true)
-    toast('Farm tour finished! +10 petals')
+    say('Farm tour finished! +10 petals')
     playSound('petals')
   }
 })
@@ -284,14 +349,15 @@ watch(
 function checkRain() {
   if (!['rain', 'storm'].includes(sky.value)) return
   const n = farm.rainWater()
-  if (n) toast(`It’s raining where you are. ${n} ${n === 1 ? 'crop' : 'crops'} got a drink!`)
+  if (n) for (const o of farm.objects) if (o.crop?.watered) popAt(o.uid, '', 'water')
 }
 watch(sky, checkRain)
 
 // ---- treats ----
 function onFed(r) {
   pip.queueCelebration?.(r)
-  toast(`${pip.plantName} loved the ${GOODS[r.id].name.toLowerCase()}! +${r.points} growth`, r.id)
+  const pipObj = farm.objects.find((o) => o.type === 'pip')
+  if (pipObj) popAt(pipObj.uid, `+${r.points} growth`, r.id)
   playSound('boop')
 }
 
@@ -319,10 +385,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="page flex flex-col">
+  <section class="page farm-page flex flex-col">
     <!-- top bar: level, name, weather, petals -->
     <header class="flex items-center gap-3">
-      <button type="button" class="relative h-14 w-14 shrink-0" :aria-label="`Farm level ${farm.state.level}`" @click="toast(farm.state.level >= farm.MAX_FARM_LEVEL ? 'Top farm level. Amazing!' : `${farm.xpNeeded - farm.state.xp} XP to level ${farm.state.level + 1}`)">
+      <button type="button" class="relative h-14 w-14 shrink-0" :aria-label="`Farm level ${farm.state.level}`" @click="say(farm.state.level >= farm.MAX_FARM_LEVEL ? 'Top farm level. Amazing!' : `${farm.xpNeeded - farm.state.xp} XP to level ${farm.state.level + 1}`)">
         <svg viewBox="0 0 56 56" class="absolute inset-0 -rotate-90">
           <circle cx="28" cy="28" r="24" fill="none" stroke="var(--color-sand-200)" stroke-width="5" />
           <circle cx="28" cy="28" r="24" fill="none" stroke="var(--color-honey-400)" stroke-width="5" stroke-linecap="round" :stroke-dasharray="150.8" :stroke-dashoffset="150.8 * (1 - xpFill)" class="transition-[stroke-dashoffset] duration-700" />
@@ -346,62 +412,96 @@ onMounted(() => {
       <PetalBadge :count="pip.petals" size="sm" />
     </header>
 
-    <!-- the farm, with the countryside behind it -->
-    <div class="scene relative mt-4">
-      <FarmSky :phase="phase" :season="season" :weather="sky" />
-      <div class="relative -mt-12">
-        <FarmMap
-          :objects="farm.objects"
-          :rows="farm.rows"
-          :cols="farm.cols"
-          :now="farm.now"
-          :mode="mode"
-          :selected="selected"
-          :ghost="ghost"
-          :kitchen="farm.state.kitchen"
-          :orders-ready="farm.ordersReady"
-          :pip-look="pipLook"
-          :pip-sleeping="pip.asleep"
-          :wish-good="wishGood"
-          :highlight="tourHighlight"
-          :phase="phase"
-          :season="season"
-          :weather="sky"
-          @tap="onTap"
-          @tap-tile="onTapTile"
-          @move="onMove"
-          @ghost="(p) => (ghost = { ...ghost, ...p })"
-          @confirm="confirmPlace"
-          @cancel="ghost = null"
-          @action="onAction"
-        />
+    <!-- the farm -->
+    <div class="scene relative mt-3 shrink-0" :class="{ 'is-flat': !use3d }">
+      <Farm3D
+        v-if="use3d"
+        ref="farmView"
+        :objects="farm.objects"
+        :rows="farm.rows"
+        :cols="farm.cols"
+        :now="farm.now"
+        :mode="mode"
+        :selected="selected"
+        :ghost="ghost"
+        :kitchen="farm.state.kitchen"
+        :orders-ready="farm.ordersReady"
+        :pip-look="pipLook"
+        :pip-sleeping="pip.asleep"
+        :wish-good="wishGood"
+        :highlight="tourHighlight"
+        :phase="phase"
+        :season="season"
+        :weather="sky"
+        :tool="tool"
+        @tap="onTap"
+        @tap-tile="onTapTile"
+        @move="onMove"
+        @ghost="(p) => (ghost = { ...ghost, ...p })"
+        @confirm="confirmPlace"
+        @cancel="ghost = null"
+        @action="onAction"
+        @paint="onPaint"
+        @failed="use3d = false"
+      />
+      <div v-else class="no-scrollbar h-full overflow-y-auto rounded-[1.75rem]">
+        <FarmSky :phase="phase" :season="season" :weather="sky" />
+        <div class="relative -mt-12">
+          <FarmMap
+            :objects="farm.objects"
+            :rows="farm.rows"
+            :cols="farm.cols"
+            :now="farm.now"
+            :mode="mode"
+            :selected="selected"
+            :ghost="ghost"
+            :kitchen="farm.state.kitchen"
+            :orders-ready="farm.ordersReady"
+            :pip-look="pipLook"
+            :pip-sleeping="pip.asleep"
+            :wish-good="wishGood"
+            :highlight="tourHighlight"
+            :phase="phase"
+            :season="season"
+            :weather="sky"
+            @tap="onTap"
+            @tap-tile="onTapTile"
+            @move="onMove"
+            @ghost="(p) => (ghost = { ...ghost, ...p })"
+            @confirm="confirmPlace"
+            @cancel="ghost = null"
+            @action="onAction"
+          />
+        </div>
       </div>
       <Celebration :trigger="burst" :y="30" :count="30" :spread="180" />
+      <p v-if="mode === 'build' && !ghost" class="build-tip pointer-events-none absolute inset-x-0 top-3 mx-auto w-max rounded-full bg-surface/90 px-3 py-1 text-[0.6875rem] font-bold text-bark-500 shadow-soft">
+        Drag to move things. Tap one to turn it or put it away.
+      </p>
     </div>
 
-    <p v-if="mode === 'build' && !ghost" class="mt-3 text-center text-xs font-bold text-bark-400">
-      Drag things to move them. Tap one to flip it or put it away.
-    </p>
-    <button v-else-if="nextLand && mode === 'farm'" type="button" class="land mt-3 w-full" @click="goShop('farm')">
-      <Icon name="plus" :size="15" :stroke="2.4" />
-      {{ nextLand.level > farm.state.level ? `More land opens at farm level ${nextLand.level}` : 'Buy more land in the shop' }}
-    </button>
-
-    <!-- room to scroll the bottom rows above the dock or drawer -->
-    <div class="shrink-0" :class="mode === 'build' ? 'h-44' : 'h-24'" aria-hidden="true" />
-
-    <!-- harvest everything -->
-    <Transition name="pop">
-      <button
-        v-if="mode === 'farm' && farm.readyCount > 1"
-        type="button"
-        class="harvest fixed left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-leaf-500 px-5 py-2.5 text-sm font-extrabold text-white shadow-float"
-        data-sound="none"
-        @click="harvestAll"
-      >
-        <span class="text-lg">🧺</span> Harvest all · {{ farm.readyCount }}
-      </button>
-    </Transition>
+    <!-- quick actions above the dock: harvest everything, water everything, or the planting tool -->
+    <div v-if="mode === 'farm'" class="actions fixed inset-x-0 z-30 mx-auto flex max-w-lg justify-center gap-2 px-3">
+      <template v-if="tool">
+        <div class="tool-bar flex items-center gap-3 rounded-full bg-bark-600 py-1.5 pl-2 pr-1.5 text-[#FFFAF2] shadow-float">
+          <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15"><GoodIcon :id="tool.crop" :size="22" /></span>
+          <span class="text-xs font-bold leading-tight">Planting {{ cropById[tool.crop].name.toLowerCase() }}<br /><span class="opacity-70">Tap or swipe empty plots</span></span>
+          <button type="button" class="rounded-full bg-leaf-400 px-3.5 py-1.5 text-xs font-extrabold" data-sound="toggleOff" @click="tool = null">Done</button>
+        </div>
+      </template>
+      <template v-else>
+        <Transition name="pop">
+          <button v-if="farm.readyCount > 1" type="button" class="action bg-leaf-500" data-sound="none" @click="harvestAll">
+            <span class="text-base">🧺</span> Harvest all · {{ farm.readyCount }}
+          </button>
+        </Transition>
+        <Transition name="pop">
+          <button v-if="thirsty.length > 1" type="button" class="action bg-water-500" data-sound="none" @click="waterAll">
+            <Icon name="drop" :size="16" :stroke="2.4" /> Water all · {{ thirsty.length }}
+          </button>
+        </Transition>
+      </template>
+    </div>
 
     <!-- the dock (farm) or the drawer (build) -->
     <div class="bottom fixed inset-x-0 z-30 mx-auto max-w-lg px-3">
@@ -439,15 +539,10 @@ onMounted(() => {
       </Transition>
     </div>
 
-    <!-- messages -->
-    <div class="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex flex-col items-center gap-1.5 px-4" role="status" aria-live="polite">
-      <TransitionGroup name="toast">
-        <div v-for="t in toasts" :key="t.id" class="flex items-center gap-2 rounded-full bg-bark-600 px-4 py-2 text-sm font-bold text-[#FFFAF2] shadow-float">
-          <GoodIcon v-if="t.icon" :id="t.icon" :size="20" />
-          {{ t.text }}
-        </div>
-      </TransitionGroup>
-    </div>
+    <!-- a quiet note when something can't be done -->
+    <Transition name="note">
+      <p v-if="note" class="note pointer-events-none fixed inset-x-0 z-40 mx-auto w-max max-w-[90vw] rounded-full bg-bark-600/90 px-4 py-2 text-center text-xs font-bold text-[#FFFAF2] shadow-float" role="status">{{ note }}</p>
+    </Transition>
 
     <FarmTour v-if="mode === 'farm'" @skip="farm.tourFinish(false)" />
 
@@ -456,22 +551,22 @@ onMounted(() => {
     <BarnSheet
       :open="sheet === 'barn'"
       @close="sheet = null"
-      @sold="(r) => toast(`Sold for ${r.petals} petals`, r.id)"
+      @sold="() => playSound('petals')"
       @fed="onFed"
       @upgrade="goShop('farm')"
     />
     <KitchenSheet
       :open="sheet === 'kitchen'"
       @close="sheet = null"
-      @cooked="(id) => (toast(`Cooking ${GOODS[id].name.toLowerCase()}…`, id), playSound('swap'))"
-      @collected="afterGain"
+      @cooked="() => playSound('swap')"
+      @collected="(r) => afterGain(r, farm.objects.find((o) => o.type === 'kitchen')?.uid)"
       @upgrade="goShop('farm')"
     />
     <OrdersSheet
       :open="sheet === 'orders'"
       @close="sheet = null"
-      @delivered="(r) => (toast(`Delivered! +${r.petals} petals · +${r.xp} XP`), playSound('win'), haptic('success'))"
-      @community="(r) => (burst++, toast(r.can ? `+${r.petals} petals and a golden watering can!` : `+${r.petals} petals. Thank you, neighbour!`))"
+      @delivered="() => (playSound('win'), haptic('success'))"
+      @community="(r) => (burst++, say(r.can ? `+${r.petals} petals and a golden watering can!` : `+${r.petals} petals. Thank you, neighbour!`))"
     />
     <PipSheet :open="sheet === 'pip'" @close="sheet = null" @fed="onFed" @barn="sheet = 'barn'" />
     <FriendsSheet :open="sheet === 'friends'" @close="sheet = null" />
@@ -497,8 +592,46 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.farm-page {
+  padding-bottom: 0;
+}
 .scene {
   border-radius: 1.75rem;
+  /* fills the screen between the top bar and the dock */
+  height: max(22rem, calc(100dvh - 17rem - env(safe-area-inset-bottom) - max(1rem, env(safe-area-inset-top))));
+}
+.actions {
+  bottom: calc(11.25rem + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+.actions > * {
+  pointer-events: auto;
+}
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-float);
+}
+.action:active {
+  transform: scale(0.96);
+}
+.note {
+  bottom: calc(14.5rem + env(safe-area-inset-bottom));
+}
+.note-enter-active,
+.note-leave-active {
+  transition: opacity 0.25s ease, transform 0.3s ease;
+}
+.note-enter-from,
+.note-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 .land {
   display: inline-flex;

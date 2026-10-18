@@ -44,7 +44,7 @@ const items = computed(() => {
     case 'yours': return inventory.value
     case 'plots': return [{ id: 'plot' }]
     case 'trees': return TREES
-    case 'animals': return PRODUCERS
+    case 'animals': return [...PRODUCERS, ...DECOR.filter((d) => d.cat === 'animal')]
     case 'decor': return DECOR.filter((d) => d.cat === 'decor' && !d.special && inSeason(d))
     case 'fences': return DECOR.filter((d) => d.cat === 'fence')
     case 'paths': return DECOR.filter((d) => d.cat === 'path')

@@ -22,6 +22,9 @@ const crops = computed(() => CROPS.map((c) => ({ ...c, locked: c.level > farm.st
 
 <template>
   <BottomSheet :open="open" title="What shall we grow?" eyebrow="Plant a seed" @close="emit('close')">
+    <p v-if="emptyPlots > 1" class="-mt-1 mb-3 rounded-xl bg-leaf-200/50 px-3 py-2 text-xs font-semibold text-bark-500">
+      Pick a seed, then tap or swipe across any other empty plots to plant them too. Seeds are paid for one plot at a time.
+    </p>
     <ul class="space-y-2">
       <li
         v-for="c in crops"
@@ -40,7 +43,7 @@ const crops = computed(() => CROPS.map((c) => ({ ...c, locked: c.level > farm.st
           </p>
         </div>
         <div v-if="!c.locked" class="flex shrink-0 flex-col items-end gap-1">
-          <button type="button" class="btn btn-primary btn-sm h-8! gap-1! px-3!" :disabled="!c.afford" data-sound="none" @click="emit('plant', c.id)">
+          <button type="button" class="btn btn-primary btn-sm h-8! gap-1! px-3!" :disabled="!c.afford" data-sound="none" :aria-label="`Plant ${c.name}`" @click="emit('plant', c.id)">
             <template v-if="c.seed"><PetalIcon :size="14" />{{ c.seed }}</template>
             <template v-else>Free</template>
           </button>

@@ -53,6 +53,8 @@ export const PRODUCERS = [
   { id: 'hive', name: 'Beehive', level: 4, price: 60, w: 1, h: 1, feed: {}, makes: 'honey', amount: 1, minutes: 60, xp: 3, blurb: 'The bees make honey all on their own.' },
   { id: 'mill', name: 'Windmill', level: 5, price: 100, w: 2, h: 2, feed: { wheat: 3 }, makes: 'flour', amount: 1, minutes: 6, xp: 2, blurb: 'Turns wheat into flour for baking.' },
   { id: 'cowshed', name: 'Cow shed', level: 7, price: 150, w: 2, h: 2, feed: { corn: 2 }, makes: 'milk', amount: 2, minutes: 40, xp: 5, blurb: 'Feed the cow corn, get fresh milk.' },
+  { id: 'sheepfold', name: 'Sheep pen', level: 8, price: 170, w: 2, h: 2, feed: { carrot: 2 }, makes: 'wool', amount: 2, minutes: 45, xp: 5, blurb: 'Feed the sheep carrots, gather soft wool.' },
+  { id: 'pigpen', name: 'Pig pen', level: 9, price: 190, w: 2, h: 2, feed: { potato: 2 }, makes: 'truffle', amount: 1, minutes: 50, xp: 6, blurb: 'Feed the pigs potatoes. They sniff out truffles.' },
 ]
 
 // ---- everything that can sit in the barn ----
@@ -68,6 +70,8 @@ export const GOODS = {
   honey: { id: 'honey', name: 'Honey', sell: 5, kind: 'product', level: 4 },
   flour: { id: 'flour', name: 'Flour', sell: 3, kind: 'product', level: 5 },
   milk: { id: 'milk', name: 'Milk', sell: 5, kind: 'product', level: 7 },
+  wool: { id: 'wool', name: 'Wool', sell: 8, kind: 'product', level: 8 },
+  truffle: { id: 'truffle', name: 'Truffle', sell: 12, kind: 'product', level: 9 },
 }
 
 // ---- the kitchen ----
@@ -93,6 +97,8 @@ const RECIPE_LIST = [
   { id: 'lemonade', name: 'Lemonade', level: 10, minutes: 6, needs: { lemon: 3, honey: 1 } },
   { id: 'rosecake', name: 'Rose cake', level: 10, minutes: 30, needs: { rose: 1, flour: 3, egg: 2, milk: 2 } },
   { id: 'feast', name: 'Garden feast', level: 11, minutes: 30, needs: { pumpkin: 1, tomato: 2, potato: 2, corn: 2 } },
+  { id: 'trufflemash', name: 'Truffle mash', level: 12, minutes: 20, needs: { truffle: 1, potato: 2, milk: 1 } },
+  { id: 'cheesetoast', name: 'Cheese on toast', level: 9, minutes: 8, needs: { milk: 2, wheat: 2 } },
 ]
 
 const partsValue = (needs) => Object.entries(needs).reduce((sum, [id, n]) => sum + GOODS[id].sell * n, 0)
@@ -163,6 +169,11 @@ export const DECOR = [
   { id: 'treehouse', name: 'Treehouse', level: 15, price: 220, w: 2, h: 2 },
   { id: 'rainbow', name: 'Rainbow arch', level: 16, price: 260, w: 2, h: 1 },
   { id: 'snowman', name: 'Snowman', level: 3, price: 10, w: 1, h: 1, season: 'winter' },
+  // animal friends who live on the farm
+  { id: 'bunnyhutch', name: 'Bunny hutch', level: 4, price: 30, w: 1, h: 1, cat: 'animal' },
+  { id: 'duckhouse', name: 'Duck house', level: 5, price: 35, w: 1, h: 1, cat: 'animal' },
+  { id: 'goats', name: 'Goat corner', level: 7, price: 60, w: 2, h: 1, cat: 'animal' },
+  { id: 'horse', name: 'Horse paddock', level: 9, price: 120, w: 2, h: 2, cat: 'animal' },
   // never sold: a thank you for reaching the neighbourhood goal
   { id: 'goldencan', name: 'Golden Watering Can', level: 1, price: 0, w: 1, h: 1, special: true },
 ].map((d) => ({ cat: 'decor', ...d }))
@@ -223,11 +234,11 @@ export const WATER_SPEEDUP = 0.15
 export const CRITTERS = [
   { id: 'bunny', name: 'Bun', kind: 'bunny', likes: ['carrot', 'carrotsoup'] },
   { id: 'hedgehog', name: 'Hazel', kind: 'hedgehog', likes: ['apple', 'applecrumble'] },
-  { id: 'badger', name: 'Bramble', kind: 'badger', likes: ['potato', 'mash'] },
+  { id: 'badger', name: 'Bramble', kind: 'badger', likes: ['potato', 'mash', 'trufflemash'] },
   { id: 'bee', name: 'Buzz', kind: 'bee', likes: ['honey', 'lavender', 'sunflower'] },
   { id: 'frog', name: 'Fern', kind: 'frog', likes: ['slush', 'lemonade'] },
   { id: 'mouse', name: 'Mimi', kind: 'mouse', likes: ['wheat', 'flour', 'pancakes'] },
-  { id: 'owl', name: 'Professor Hoot', kind: 'owl', likes: ['lavendertea', 'cherrytart'] },
+  { id: 'owl', name: 'Professor Hoot', kind: 'owl', likes: ['lavendertea', 'cherrytart', 'wool'] },
   { id: 'fox', name: 'Rusty', kind: 'fox', likes: ['egg', 'omelette', 'feast'] },
 ]
 export const ORDER_SLOTS = 4

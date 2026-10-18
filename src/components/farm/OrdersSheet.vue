@@ -46,11 +46,12 @@ function deliver(i) {
             <span
               v-for="(n, id) in o.needs"
               :key="id"
-              class="inline-flex items-center gap-1.5 rounded-full bg-cream px-2.5 py-1 text-sm font-bold"
+              class="inline-flex items-center gap-1.5 rounded-full bg-cream py-1 pl-1.5 pr-3 text-sm font-bold"
               :class="(farm.state.barn[id] ?? 0) >= n ? 'text-bark-600' : 'text-clay-400'"
             >
-              <GoodIcon :id="id" :size="20" /> {{ farm.state.barn[id] ?? 0 }}/{{ n }}
-              <span class="sr-only">{{ GOODS[id].name }}</span>
+              <GoodIcon :id="id" :size="24" />
+              <span class="text-bark-600">{{ n }} {{ GOODS[id].name.toLowerCase() }}</span>
+              <span class="text-xs tabular-nums opacity-70">{{ farm.state.barn[id] ?? 0 }}/{{ n }}</span>
             </span>
           </div>
           <div class="mt-3 flex items-center gap-2">

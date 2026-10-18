@@ -11,6 +11,9 @@ import { FARM_COLS } from '@/data/farm'
 import { playSound } from '@/utils/sound'
 import { haptic } from '@/utils/haptics'
 import FarmMap from '@/components/farm/FarmMap.vue'
+import Farm3D from '@/components/farm/Farm3D.vue'
+import { getDayPhase } from '@/utils/timeOfDay'
+import { season } from '@/services/weather'
 import Icon from '@/components/Icon.vue'
 import GiftSheet from '@/components/farm/GiftSheet.vue'
 import { GOODS } from '@/data/farm'
@@ -26,6 +29,14 @@ const code = computed(() => String(route.params.code || '').toUpperCase())
 const data = ref(null)
 const error = ref('')
 const helped = ref([])
+const use3d = ref((() => {
+  try {
+    const c = document.createElement('canvas')
+    return Boolean(c.getContext('webgl2') || c.getContext('webgl'))
+  } catch {
+    return false
+  }
+})())
 const giftOpen = ref(false)
 const message = ref('')
 const now = ref(Date.now())
@@ -113,8 +124,23 @@ onBeforeUnmount(() => clearInterval(clock))
       <button v-if="!isMine" type="button" class="btn btn-secondary mt-3 w-full gap-2!" @click="giftOpen = true">
         <span class="text-lg">🎁</span> Send {{ data.plant }} a gift
       </button>
-      <div class="mt-4">
+      <div class="visit-scene mt-4">
+        <Farm3D
+          v-if="use3d"
+          :objects="data.objects"
+          :rows="data.rows"
+          :cols="FARM_COLS"
+          :now="now"
+          mode="view"
+          :pip-look="data.pip"
+          :helped="helped"
+          :phase="getDayPhase(new Date(now))"
+          :season="season"
+          @tap="onTap"
+          @failed="use3d = false"
+        />
         <FarmMap
+          v-else
           :objects="data.objects"
           :rows="data.rows"
           :cols="FARM_COLS"
@@ -145,6 +171,9 @@ onBeforeUnmount(() => clearInterval(clock))
 </template>
 
 <style scoped>
+.visit-scene {
+  height: max(22rem, calc(100dvh - 17rem));
+}
 .toast-enter-active,
 .toast-leave-active {
   transition: opacity 0.25s ease, transform 0.3s ease;

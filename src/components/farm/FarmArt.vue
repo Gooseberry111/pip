@@ -717,6 +717,74 @@ const working = computed(() => props.busy || (props.obj.readyAt && props.now < p
       <rect x="14" y="1" width="12" height="4" rx="1" fill="#3E4A7A" /><rect x="16" y="-6" width="8" height="8" rx="1" fill="#3E4A7A" />
       <path d="M10 26 L3 20 M30 26 L37 20" stroke="#8C6A4F" stroke-width="1.6" stroke-linecap="round" />
     </g>
+    <!-- sheep pen -->
+    <g v-else-if="type === 'sheepfold'">
+      <ellipse cx="40" cy="78" rx="36" ry="4" fill="#4F6B3E" opacity="0.2" />
+      <path d="M6 30 L30 12 L54 30Z" fill="#6F8E9C" />
+      <rect x="10" y="29" width="40" height="26" rx="2" fill="#D9C4A6" />
+      <rect x="24" y="38" width="12" height="17" fill="#8C6A4F" />
+      <path d="M4 62 H76 M4 70 H76" stroke="#E9DCC6" stroke-width="3" />
+      <path v-for="x in [6, 22, 38, 54, 70]" :key="x" :d="`M${x} 56 V76`" stroke="#E9DCC6" stroke-width="3" stroke-linecap="round" />
+      <g v-for="(p, k) in [[48, 66], [64, 60]]" :key="k" :transform="`translate(${p[0]} ${p[1]})`">
+        <circle r="7" fill="#F4EFE6" /><circle cx="-4" cy="-3" r="4" fill="#F4EFE6" /><circle cx="4" cy="-4" r="4" fill="#F4EFE6" />
+        <rect x="6" y="-4" width="5" height="5" rx="2" fill="#3E2F25" />
+      </g>
+    </g>
+    <!-- pig pen -->
+    <g v-else-if="type === 'pigpen'">
+      <ellipse cx="44" cy="64" rx="30" ry="12" fill="#8A6A4A" />
+      <path d="M4 32 L24 18 L44 32Z" fill="#8C6A4F" />
+      <rect x="8" y="31" width="32" height="20" rx="2" fill="#C9684F" />
+      <rect x="18" y="38" width="10" height="13" fill="#5B4636" />
+      <g v-for="(p, k) in [[40, 64], [58, 60]]" :key="k" :transform="`translate(${p[0]} ${p[1]})`">
+        <ellipse rx="9" ry="6" fill="#F4AEB2" />
+        <ellipse cx="8" cy="0" rx="3" ry="2.6" fill="#E8898F" />
+        <path d="M2 -6 L4 -9 L6 -5Z" fill="#F4AEB2" />
+      </g>
+      <path d="M2 74 H78" stroke="#B98C63" stroke-width="3" />
+    </g>
+    <!-- bunny hutch -->
+    <g v-else-if="type === 'bunnyhutch'">
+      <path d="M6 14 L20 4 L34 14Z" fill="#7E9A63" />
+      <rect x="8" y="13" width="24" height="14" rx="2" fill="#C49A6C" />
+      <rect x="13" y="16" width="14" height="9" rx="1" fill="#5B4636" />
+      <path d="M10 27 V31 M30 27 V31" stroke="#8C6A4F" stroke-width="2" />
+      <g transform="translate(14 34)"><ellipse rx="5" ry="3.6" fill="#FFFDF8" /><circle cx="4" cy="-2" r="2.6" fill="#FFFDF8" /><path d="M3 -4 V-9 M5 -4 V-9" stroke="#FFFDF8" stroke-width="1.6" stroke-linecap="round" /></g>
+      <g transform="translate(28 35)"><ellipse rx="4.4" ry="3.2" fill="#C9A06D" /><circle cx="3.4" cy="-2" r="2.3" fill="#C9A06D" /><path d="M2.6 -4 V-8 M4.4 -4 V-8" stroke="#C9A06D" stroke-width="1.4" stroke-linecap="round" /></g>
+    </g>
+    <!-- duck house -->
+    <g v-else-if="type === 'duckhouse'">
+      <ellipse cx="26" cy="32" rx="13" ry="6" fill="#7FB2CB" />
+      <path d="M2 16 L12 8 L22 16Z" fill="#5B8FC0" />
+      <rect x="4" y="15" width="16" height="12" rx="1" fill="#F3E3C6" />
+      <rect x="9" y="19" width="6" height="8" fill="#5B4636" />
+      <g transform="translate(26 31)"><ellipse rx="5" ry="3" fill="#F6D266" /><circle cx="4" cy="-3" r="2.4" fill="#F6D266" /><path d="M6 -3 L8.5 -2.6 L6 -2Z" fill="#EE9447" /></g>
+    </g>
+    <!-- goat corner -->
+    <g v-else-if="type === 'goats'">
+      <ellipse cx="54" cy="22" rx="12" ry="8" fill="#B4AC9C" />
+      <path d="M2 30 H78 M2 37 H78" stroke="#B98C63" stroke-width="2.6" />
+      <path v-for="x in [4, 24, 44, 64, 76]" :key="x" :d="`M${x} 26 V40`" stroke="#8C6A4F" stroke-width="2.6" stroke-linecap="round" />
+      <g v-for="(p, k) in [[22, 22], [54, 12]]" :key="k" :transform="`translate(${p[0]} ${p[1]})`">
+        <rect x="-7" y="-4" width="14" height="7" rx="3" fill="#F4EFE6" />
+        <rect x="5" y="-9" width="6" height="6" rx="2" fill="#F4EFE6" />
+        <path d="M6 -9 L4 -13 M9 -9 L8 -13" stroke="#9C7351" stroke-width="1.2" />
+        <path d="M-5 3 V7 M4 3 V7" stroke="#D9CFC0" stroke-width="1.6" />
+      </g>
+    </g>
+    <!-- horse paddock -->
+    <g v-else-if="type === 'horse'">
+      <ellipse cx="40" cy="44" rx="34" ry="28" fill="#B9A27E" opacity="0.4" />
+      <rect x="4" y="10" width="72" height="66" rx="6" fill="none" stroke="#FFFDF8" stroke-width="2.6" />
+      <rect x="4" y="18" width="72" height="50" rx="6" fill="none" stroke="#FFFDF8" stroke-width="1.6" opacity="0.7" />
+      <g transform="translate(40 44)">
+        <rect x="-14" y="-6" width="26" height="11" rx="5" fill="#9C6B45" />
+        <path d="M-11 5 V15 M-5 5 V15 M4 5 V15 M9 5 V15" stroke="#6B4A33" stroke-width="2.4" stroke-linecap="round" />
+        <path d="M10 -4 L16 -16 L22 -14 L17 -2Z" fill="#9C6B45" />
+        <path d="M11 -6 L15 -15" stroke="#4A3426" stroke-width="2.6" />
+        <path d="M-14 -3 Q-20 2 -18 10" stroke="#4A3426" stroke-width="2.4" fill="none" />
+      </g>
+    </g>
     <g v-else-if="type === 'goldencan'">
       <ellipse cx="20" cy="37" rx="12" ry="2.6" fill="#4F6B3E" opacity="0.25" />
       <rect x="14" y="30" width="12" height="7" rx="1.5" fill="#B9927A" />

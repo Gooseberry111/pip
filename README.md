@@ -37,9 +37,11 @@ Set `VITE_SITE_URL` to your Netlify address (for example `VITE_SITE_URL=https://
 * *The order board*: critter neighbours (Bun the bunny, Hazel the hedgehog, Bramble the badger and friends) ask for things and pay well in petals and farm XP. A new order arrives a while after each one is filled.
 * *Pip's daily wish*: one thing from the farm Pip would love today, shown on Home and the farm. Granting it gives petals and growth.
 * *Farm levels* (XP from harvesting, cooking and orders) unlock crops, trees, buildings, recipes, decorations and more land, with a celebration listing what's new.
-* *The look*: the farm sits in the countryside, with a sky, hills and a little farmhouse behind it that follow the time of day and the season. Grass has tufts and flowers, a hedge runs round the edge, lamps, fires and windows glow after dark, and butterflies drift past on fine days. Crops and trees sway, ripe crops sparkle, plots are raised wooden beds, and hens scratch about by the coop, a calf grazes by the cow shed and a duck paddles on the pond.
+* *In 3D*: the farm is a real 3D scene (three.js, `src/components/farm/Farm3D.vue`, models in `src/farm3d/`): a raised island of farmland with a hedge and a gate, meadows, trees and hills around it, soft shadows, a sun and moon that follow the time of day, seasons, and real rain and snow. Drag to look around, pinch or scroll to zoom, and walk all the way round: twist two fingers (or right drag, or Shift drag, on a computer) to turn, and slide two fingers up or down to tilt from a low, side on view to straight down. Buttons in the corner turn left and right, switch between From above, Angled and Low views, and the compass brings you back to the front. Every plot, crop (at each stage), tree, building, pen and decoration is its own model, and lamps, fires, tents and windows light up after dark. Ready bubbles, progress bars and little floating rewards ("+3" over the plot you picked) hang over the right thing; there are no banners at the top of the screen any more. Phones without 3D graphics get the flat farm instead (`FarmMap.vue`).
+* *Animals*: hens and a chick in the coop yard, a cow by the shed, sheep in the sheep pen (feed carrots, gather wool), pigs in the pig pen (feed potatoes, they find truffles for the new truffle mash), bees round the hive, and animal friends to place: a bunny hutch, a duck house, a goat corner and a horse paddock. A duck paddles on the lily pond and a dog lives by the kennel. They all wander, graze, peck and hop about.
+* *Planting and watering*: pick a seed for one plot and keep it in hand: tap or swipe across any other empty plots to plant them too (paid plot by plot), then tap Done. "Plant all" still fills every empty plot. Tap a growing crop to water it, or "Water all" waters every thirsty crop at once (next to "Harvest all").
 * *The dock*: picture buttons for the Barn (with a fill meter), Kitchen (a dot when a dish is ready), Orders, Build, Shop and Friends. The level ring at the top shows XP; "Harvest all" floats up when there's lots to pick.
-* *Build mode*: a drawer of everything you can place, by kind (Yours, Plots, Trees, Animals, Decor, Fences, Paths). Pick something and a preview appears on the farm: drag it or tap a spot, then tap the tick (anything not yet owned is bought as you place it). Paths, fences and plots stay ready for the next one, so a row is quick. Drag anything already placed to move it; tap it to flip it round or put it away. Land grows from 8 x 10 tiles to 8 x 18.
+* *Build mode*: a drawer of everything you can place, by kind (Yours, Plots, Trees, Animals, Decor, Fences, Paths). Pick something and a preview appears on the farm: drag it or tap a spot, then tap the tick (anything not yet owned is bought as you place it). Paths, fences and plots stay ready for the next one, so a row is quick. Drag anything already placed to move it; tap it to turn it round or put it away. Land grows from 8 x 10 tiles to 8 x 18.
 * *Seasons and weather*: spring, summer, autumn and winter change the grass and the trees (worked out for your side of the world). Turn on real weather (tap the season under the farm name) and rain, snow, mist and storms where you are show on the farm, from Open-Meteo, which is free and needs no key. When it rains where you are, every thirsty crop gets watered. Only a rough location (about 10 km) is kept, on the phone (`src/services/weather.js`).
 * *Collections*: everything grown or gathered fills the Harvest almanac, and every dish the Recipe book (Collection tab).
 
@@ -66,6 +68,8 @@ Set `VITE_SITE_URL` to your Netlify address (for example `VITE_SITE_URL=https://
 * *Quick to open*: each game, and the chat, settings and check-in sheets, load only when needed. The rest of the games are fetched quietly in the background once the Play tab is idle.
 
 **The shop.** Spend petals on the farm (plots, land, a bigger barn, stoves, fertiliser), trees and animals, more than 50 farm decorations (7 paths, 6 fences and edges, plus things like a sleepy cat, a fire pit, a fountain, a greenhouse, a treehouse and a rainbow arch; a snowman in winter), and dozens of looks for Pip that are only found here. A different deal every day.
+
+**Dishes.** Every dish has its own drawing (`src/components/farm/DishArt.vue`), so the three pies, the soups and the drinks never look alike, and orders and the kitchen name each item.
 
 **Pip's wardrobe.** The scene you choose shows on Home too, softly lit for the time of day. 23 pots, 14 leaf styles, 15 flowers, 21 decorations and 13 scenes (new: Seaside, Autumn Wood, Snowy Day, Cosy Library, City Rooftop, Greenhouse and Outer Space), from levels, the shop and seed packets.
 
@@ -111,7 +115,7 @@ Pip never claims to be a person or a counsellor. If a message suggests someone m
 * doing the day's little things (water, say hi, breathe, play). Each pays out once a day, with no streaks and no penalty for skipping
 * playing games
 
-**Play.** Games sit in four sections on the Play tab: Puzzles, Arcade, Play together, and Calm and music.
+**Play.** Games sit in sections on the Play tab: Puzzles, Word games, Arcade, Board games (play Pip or a friend), Party games (2 to 4 players on one phone), and Calm and music. A switch at the top shows All, Just me, or With friends.
 
 *Puzzles*
 * *Bloom Burst:* a match 3 on a 7 x 8 board, over 45 levels. Swipe or tap to swap flowers. 4 in a line makes a watering can that sweeps its row or column, an L or T makes a bee that clears around it, and 5 in a line makes a rainbow seed that clears a whole kind. Swap two specials together for a bigger burst. Goals: reach a score, collect certain flowers, or wash away mud (some mud takes two washes). Leftover moves turn into a bloom bonus. Out of moves? 5 more cost 12 petals, once per try. Goals and star scores were tuned with a bot (`src/utils/burstEngine.js` holds the rules).
@@ -127,7 +131,11 @@ Pip never claims to be a person or a counsellor. If a message suggests someone m
 * *Pond Fishing:* the hook swings under the boat; tap to drop it. Minnows, perch, carp, turtles, golden koi and treasure are worth more the harder they are to land; boots waste time and pufferfish take points. 30 levels; targets set from a bot that never misses (`src/utils/fishingEngine.js`).
 * *Raindrop Catch*, *Seed Glide* and *Firefly Night*: 40 levels each, getting faster, busier and tighter all the way.
 
-*Play together*
+*Board games and party games*
+* *Seed Drop:* four in a row on a 7 by 6 wall, best of three. Pip looks up to seven moves ahead on Hard.
+* *Flower Flip:* trap lines of the other colour to flip them (reversi). Pip knows the corners are gold.
+* *Garden Fences:* dots and boxes for 2 to 4 friends or against Pip, on a small or big board. Close a square to plant your flower and go again; on Hard, Pip hands over the smallest chain it can.
+* *Vines and Ladders:* a dice race for 1 to 4 people, and Pip can join as a player. Ladders lift you, vines slide you down, a six rolls again.
 * *Garden Tac Toe:* sprouts against blossoms on a classic 3 x 3 or a big 5 x 5 board (four in a row). Play Pip on Easy, Medium or Hard, or a friend on the same phone. Matches are first to 3 round wins, up to 5 rounds. On Hard 3 x 3, Pip plays perfectly, so a draw is the best result.
 * *Garden Checkers:* ladybirds against beetles by the classic rules (jumps are compulsory, multi jumps, crowning). Play Pip on three levels, or a friend; the board turns for each player. Rules and Pip's thinking are in `src/utils/checkersEngine.js`.
 * *Snail Race:* tap to speed your snail along. Each tap uses stamina, and running out means a short nap. 30 levels against quicker and cleverer computer snails, longer tracks and rivals who sprint at the finish (3 stars: win without a nap), or a party race for 2 to 4 players with a pad each.

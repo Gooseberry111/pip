@@ -18,8 +18,9 @@ const freeSlot = computed(() => farm.state.kitchen.findIndex((k) => !k))
 const nextStove = computed(() => KITCHEN_SLOTS[farm.state.kitchenLevel + 1] ?? null)
 
 const recipes = computed(() =>
+  // a steady order (by level, locked ones last), so nothing jumps about while you cook
   RECIPES.map((r) => ({ ...r, locked: r.level > farm.state.level, can: hasAll(farm.state.barn, r.needs), made: farm.state.almanac[r.id] ?? 0 })).sort(
-    (a, b) => Number(a.locked) - Number(b.locked) || Number(b.can) - Number(a.can) || a.level - b.level,
+    (a, b) => Number(a.locked) - Number(b.locked) || a.level - b.level,
   ),
 )
 
@@ -38,9 +39,10 @@ function collect(i) {
   <BottomSheet :open="open" title="The kitchen" eyebrow="Cook something lovely" @close="emit('close')">
     <!-- the stoves -->
     <div class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${farm.state.kitchen.length + (nextStove ? 1 : 0)}, minmax(0, 1fr))` }">
-      <div v-for="(k, i) in farm.state.kitchen" :key="i" class="relative flex min-h-24 flex-col items-center justify-center rounded-2xl border border-line bg-cream p-2 text-center">
+      <div v-for="(k, i) in farm.state.kitchen" :key="i" class="relative flex h-28 flex-col items-center justify-center rounded-2xl border border-line bg-cream p-2 text-center">
         <template v-if="k">
           <GoodIcon :id="k.recipe" :size="34" />
+          <p class="mt-0.5 w-full truncate text-[0.6875rem] font-bold text-bark-600">{{ GOODS[k.recipe].name }}</p>
           <template v-if="now >= k.readyAt">
             <button type="button" class="btn btn-primary btn-sm mt-1.5 h-8! px-3!" data-sound="none" @click="collect(i)">Collect</button>
           </template>
@@ -56,7 +58,7 @@ function collect(i) {
           <p class="mt-1 text-xs font-bold text-bark-400">Free stove</p>
         </template>
       </div>
-      <button v-if="nextStove" type="button" class="flex min-h-24 flex-col items-center justify-center rounded-2xl border border-dashed border-sand-300 p-2 text-center text-xs font-bold text-bark-400" @click="emit('upgrade')">
+      <button v-if="nextStove" type="button" class="flex h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-sand-300 p-2 text-center text-xs font-bold text-bark-400" @click="emit('upgrade')">
         <Icon name="lock" :size="16" />
         <span class="mt-1">Another stove in the shop</span>
       </button>
@@ -95,7 +97,7 @@ function collect(i) {
             :class="(farm.state.barn[id] ?? 0) >= n ? 'text-bark-600' : 'text-clay-400'"
             :title="GOODS[id].name"
           >
-            <GoodIcon :id="id" :size="16" /> {{ farm.state.barn[id] ?? 0 }}/{{ n }}
+            <GoodIcon :id="id" :size="16" /> {{ GOODS[id].name }} <span class="tabular-nums opacity-70">{{ farm.state.barn[id] ?? 0 }}/{{ n }}</span>
           </span>
         </div>
       </li>

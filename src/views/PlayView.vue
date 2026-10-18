@@ -55,6 +55,10 @@ const GAME_LOADERS = {
   PondFishing: () => import('@/components/games/PondFishing.vue'),
   SeedSudoku: () => import('@/components/games/SeedSudoku.vue'),
   GardenTiles: () => import('@/components/games/GardenTiles.vue'),
+  SeedDrop: () => import('@/components/games/SeedDrop.vue'),
+  FlowerFlip: () => import('@/components/games/FlowerFlip.vue'),
+  GardenFences: () => import('@/components/games/GardenFences.vue'),
+  VinesLadders: () => import('@/components/games/VinesLadders.vue'),
 }
 const lazyGame = (name) => defineAsyncComponent(GAME_LOADERS[name])
 const BreatheWithPip = lazyGame('BreatheWithPip')
@@ -76,6 +80,10 @@ const MiniGolf = lazyGame('MiniGolf')
 const PondFishing = lazyGame('PondFishing')
 const SeedSudoku = lazyGame('SeedSudoku')
 const GardenTiles = lazyGame('GardenTiles')
+const SeedDrop = lazyGame('SeedDrop')
+const FlowerFlip = lazyGame('FlowerFlip')
+const GardenFences = lazyGame('GardenFences')
+const VinesLadders = lazyGame('VinesLadders')
 
 const pip = usePipStore()
 const router = useRouter()
@@ -141,14 +149,25 @@ const ART_BG = {
   fishing: '#DCEAF0',
   sudoku: '#F1EBDD',
   tiles: '#EAF1E4',
+  drop: '#EEF3E6',
+  flip: '#E4EED9',
+  fences: '#F1EBDD',
+  vines: '#E4EEDC',
 }
 
 // the Play tab, in sections. An odd one out at the top of a section gets a wide tile.
+// A filter shows everything, games for one, or games to play with others.
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'solo', label: 'Just me' },
+  { id: 'friends', label: 'With friends' },
+]
+const filter = ref('all')
 const groups = computed(() =>
   GAME_GROUPS.map((g) => {
-    const games = GAMES.filter((x) => x.group === g.id)
+    const games = GAMES.filter((x) => x.group === g.id && (filter.value === 'all' || (filter.value === 'solo' ? x.players === 'solo' : x.players !== 'solo')))
     return { ...g, games, wideFirst: games.length % 2 === 1 }
-  }),
+  }).filter((g) => g.games.length),
 )
 
 const GAME_COMPONENTS = {
@@ -171,6 +190,10 @@ const GAME_COMPONENTS = {
   fishing: PondFishing,
   sudoku: SeedSudoku,
   tiles: GardenTiles,
+  drop: SeedDrop,
+  flip: FlowerFlip,
+  fences: GardenFences,
+  vines: VinesLadders,
 }
 
 function meta(game) {
@@ -181,8 +204,8 @@ function meta(game) {
     return `Level ${reached} · ${stars}`
   }
   if (game.levels) return `Level ${Math.min(pip.levelProgress(game.id).unlocked, LEVEL_COUNTS[game.id])} · ${pip.totalStars(game.id)}`
-  if (game.id === 'tac') return 'Easy, medium, hard'
-  if (game.id === 'checkers') return 'Classic rules'
+  if (game.players === 'versus') return 'Pip or a friend'
+  if (game.players === 'party') return 'Up to 4 players'
   if (game.id === 'song') return pip.bestScores.song ? `Best ${pip.bestScores.song} notes` : 'New'
   return '1 minute'
 }
@@ -290,6 +313,9 @@ function tapSoon(id) {
       <h2 class="title-md">Games</h2>
       <span class="eyebrow">{{ GAMES.length }} to play</span>
     </div>
+    <div class="segmented mt-3" role="tablist" aria-label="Show games">
+      <button v-for="f in FILTERS" :key="f.id" type="button" role="tab" class="flex-1" :aria-selected="filter === f.id" @click="filter = f.id">{{ f.label }}</button>
+    </div>
     <section v-for="g in groups" :key="g.id" class="mt-5 first-of-type:mt-3">
       <div class="flex items-baseline gap-2">
         <h3 class="font-display text-base font-semibold text-bark-600">{{ g.title }}</h3>
@@ -312,7 +338,7 @@ function tapSoon(id) {
           >
             {{ game.tag }}
           </span>
-          <span v-if="game.isNew && !pip.totalStars(game.id)" class="absolute right-2.5 top-2.5 rounded-full bg-clay-400 px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-white shadow-soft">New</span>
+          <span v-if="game.isNew && !pip.totalStars(game.id) && !pip.stats?.[`play_${game.id}`]" class="absolute right-2.5 top-2.5 rounded-full bg-clay-400 px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-white shadow-soft">New</span>
         </div>
         <div class="px-3.5 pb-3.5 pt-3">
           <p class="font-display text-[1.0625rem] font-semibold leading-tight text-bark-600">{{ game.title }}</p>

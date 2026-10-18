@@ -80,6 +80,10 @@ const GAME_NAMES = {
   fishing: 'Pond Fishing',
   sudoku: 'Seed Sudoku',
   tiles: 'Garden Tiles',
+  drop: 'Seed Drop',
+  flip: 'Flower Flip',
+  fences: 'Garden Fences',
+  vines: 'Vines and Ladders',
 }
 const MILESTONE_DAYS = [7, 30, 100, 365]
 
@@ -720,6 +724,7 @@ export const usePipStore = defineStore('pip', () => {
   function finishRound(game, petalsWon = 0, note = null) {
     petals.value += Math.max(0, petalsWon)
     track('game')
+    track(`play_${game}`)
     const bonus = completeTask('play')
     if (note && !journal.value.some((e) => e.type === 'game' && e.title === note)) {
       addJournal({ type: 'game', title: note, text: GAME_NAMES[game] ?? '' })
